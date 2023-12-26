@@ -9,7 +9,7 @@ from pathlib import Path
 import gdown
 
 DATA_INDICES = {
-    "pinpad_observation": "14z2nMHXwmxVtkkHFiGKBeSHUIdIf28NQ",
+    "pinpad_observation": "",
 }
 
 

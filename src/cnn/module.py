@@ -8,73 +8,33 @@ Impletemtations
 
 from __future__ import annotations
 
+import tempfile
 from typing import Any
-from dataclasses import dataclass
-
 
 import lightning
+import torch
 import torch.distributions as td
 import torch.nn.functional as tf
 from torch import Tensor, optim
 
+import wandb
 from cnn.loss import kl_between_standart_normal, likelihood
-from cnn.network import Decoder, Encoder
-
-
-@dataclass
-class TestParams:
-    v1: int
-    v2: int
+from cnn.network import Decoder, DecoderConfig, Encoder, EncoderConfig
 
 
 class VAE(lightning.LightningModule):
     """Variational Auto Encoder."""
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
-        testparams: TestParams,
-        encoder_linear_sizes: tuple[int, ...] = (128, 64),
-        encoder_activation_name: str = "ELU",
-        encoder_out_activation_name: str = "Identity",
-        encoder_channels: tuple[int, ...] = (8, 16, 32),
-        encoder_kernel_sizes: tuple[int, ...] = (3, 3, 3),
-        encoder_strides: tuple[int, ...] = (2, 2, 2),
-        encoder_paddings: tuple[int, ...] = (1, 1, 1),
-        decoder_linear_sizes: tuple[int, ...] = (32, 128),
-        decoder_activation_name: str = "ELU",
-        decoder_out_activation_name: str = "Sigmoid",
-        decoder_channels: tuple[int, ...] = (32, 16, 8),
-        decoder_kernel_sizes: tuple[int, ...] = (4, 4, 4),
-        decoder_strides: tuple[int, ...] = (2, 2, 2),
-        decoder_paddings: tuple[int, ...] = (1, 1, 1),
-        decoder_output_paddings: tuple[int, ...] = (0, 0, 0),
-        observation_shape: tuple[int, int, int] = (3, 64, 64),
+        encoder_config: EncoderConfig,
+        decoder_config: DecoderConfig,
     ) -> None:
         """Set networks."""
         super().__init__()
         self.save_hyperparameters()
-        print(testparams)
-        self.encoder = Encoder(
-            linear_sizes=encoder_linear_sizes,
-            activation_name=encoder_activation_name,
-            out_activation_name=encoder_out_activation_name,
-            channels=encoder_channels,
-            kernel_sizes=encoder_kernel_sizes,
-            strides=encoder_strides,
-            paddings=encoder_paddings,
-            observation_shape=observation_shape,
-        )
-        self.decoder = Decoder(
-            linear_sizes=decoder_linear_sizes,
-            activation_name=decoder_activation_name,
-            out_activation_name=decoder_out_activation_name,
-            channels=decoder_channels,
-            kernel_sizes=decoder_kernel_sizes,
-            strides=decoder_strides,
-            paddings=decoder_paddings,
-            output_paddings=decoder_output_paddings,
-            observation_shape=observation_shape,
-        )
+        self.encoder = Encoder(encoder_config)
+        self.decoder = Decoder(decoder_config)
 
     def configure_optimizers(self) -> optim.Optimizer:
         """Choose what optimizers to use."""
@@ -147,3 +107,12 @@ class VAE(lightning.LightningModule):
         loss_dict = {"val_" + k: v for k, v in loss_dict.items()}
         self.log_dict(loss_dict, prog_bar=True, sync_dist=True)
         return loss_dict
+
+    @classmethod
+    def load_from_wandb(cls, reference: str) -> VAE:
+        """Load the model from wandb checkpoint."""
+        run = wandb.Api().run(reference)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ckpt_name, cpu = "best_model.ckpt", torch.device("cpu")
+            ckpt = run.file(ckpt_name).download(replace=True, root=tmpdir)
+            return cls.load_from_checkpoint(ckpt.name, map_location=cpu)

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from math import prod
 
 from einops import pack, unpack
@@ -12,75 +13,18 @@ from torch import Tensor, nn
 from cnn.utils import calc_conv_out_size, calc_convt_out_size, pairwise
 
 
-class Encoder(nn.Module):
-    """Image Encoder."""
+@dataclass
+class EncoderConfig:
+    """Encoder configuration."""
 
-    def __init__(  # noqa: PLR0913
-        self,
-        linear_sizes: tuple[int, ...],
-        activation_name: str,
-        out_activation_name: str,
-        channels: tuple[int, ...],
-        kernel_sizes: tuple[int, ...],
-        strides: tuple[int, ...],
-        paddings: tuple[int, ...],
-        observation_shape: tuple[int, int, int],
-    ) -> None:
-        """Set Hyperparameters."""
-        super().__init__()
-        self.linear_sizes = linear_sizes
-        self.activation_name = activation_name
-        self.out_activation_name = out_activation_name
-        self.channels = channels
-        self.kernel_sizes = kernel_sizes
-        self.strides = strides
-        self.paddings = paddings
-        self.observation_shape = observation_shape
-
-        self.model = self.build()
-
-    def build(self) -> nn.Sequential:
-        """Build the model as `nn.Sequential`."""
-        seq: list[nn.Module] = []
-
-        channels = (self.observation_shape[0], *self.channels)
-        for channel_io, kernel_size, stride, padding in zip(
-            pairwise(channels),
-            self.kernel_sizes,
-            self.strides,
-            self.paddings,
-        ):
-            conv = nn.Conv2d(
-                in_channels=channel_io[0],
-                out_channels=channel_io[1],
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-            )
-            norm = nn.BatchNorm2d(channel_io[1])
-            seq += [conv, norm, self.activation()]
-
-        seq += [nn.Flatten()]
-        linear_sizes = (prod(self.conv_out_shape), *self.linear_sizes)
-        for linear_size_pair in pairwise(linear_sizes):
-            seq += [nn.Linear(*linear_size_pair), self.activation()]
-
-        seq[-1] = self.out_activation()
-
-        return nn.Sequential(*seq)
-
-    @property
-    def conv_out_shape(self) -> tuple[int, int, int]:
-        """Return the output shape of the convolutional layers."""
-        _, h, w = self.observation_shape
-        for kernel_size, stride, padding in zip(
-            self.kernel_sizes,
-            self.strides,
-            self.paddings,
-        ):
-            h = calc_conv_out_size(h, padding, kernel_size, stride)
-            w = calc_conv_out_size(w, padding, kernel_size, stride)
-        return self.channels[-1], h, w
+    linear_sizes: tuple[int, ...]
+    activation_name: str
+    out_activation_name: str
+    channels: tuple[int, ...]
+    kernel_sizes: tuple[int, ...]
+    strides: tuple[int, ...]
+    paddings: tuple[int, ...]
+    observation_shape: tuple[int, int, int]
 
     @property
     def activation(self) -> nn.Module:
@@ -92,6 +36,59 @@ class Encoder(nn.Module):
         """Return the activation function."""
         return getattr(nn, self.out_activation_name)
 
+
+class Encoder(nn.Module):
+    """Image Encoder."""
+
+    def __init__(self, config: EncoderConfig) -> None:
+        """Set Hyperparameters."""
+        super().__init__()
+        self.config = config
+        self.model = self.build()
+
+    def build(self) -> nn.Sequential:
+        """Build the model as `nn.Sequential`."""
+        seq: list[nn.Module] = []
+
+        channels = (self.config.observation_shape[0], *self.config.channels)
+        for channel_io, kernel_size, stride, padding in zip(
+            pairwise(channels),
+            self.config.kernel_sizes,
+            self.config.strides,
+            self.config.paddings,
+        ):
+            conv = nn.Conv2d(
+                in_channels=channel_io[0],
+                out_channels=channel_io[1],
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+            )
+            norm = nn.BatchNorm2d(channel_io[1])
+            seq += [conv, norm, self.config.activation()]
+
+        seq += [nn.Flatten()]
+        linear_sizes = (prod(self.conv_out_shape), *self.config.linear_sizes)
+        for linear_size_pair in pairwise(linear_sizes):
+            seq += [nn.Linear(*linear_size_pair), self.config.activation()]
+
+        seq[-1] = self.config.out_activation()
+
+        return nn.Sequential(*seq)
+
+    @property
+    def conv_out_shape(self) -> tuple[int, int, int]:
+        """Return the output shape of the convolutional layers."""
+        _, h, w = self.config.observation_shape
+        for kernel_size, stride, padding in zip(
+            self.config.kernel_sizes,
+            self.config.strides,
+            self.config.paddings,
+        ):
+            h = calc_conv_out_size(h, padding, kernel_size, stride)
+            w = calc_conv_out_size(w, padding, kernel_size, stride)
+        return self.config.channels[-1], h, w
+
     def forward(self, observations: Tensor) -> Tensor:
         """Encode observation(s) into features."""
         observations, ps = pack([observations], "* c h w")
@@ -99,42 +96,47 @@ class Encoder(nn.Module):
         return unpack(feature, ps, "* d")[0]
 
 
+@dataclass
+class DecoderConfig:
+    """Decoder configuration."""
+
+    linear_sizes: tuple[int, ...]
+    activation_name: str
+    out_activation_name: str
+    channels: tuple[int, ...]
+    kernel_sizes: tuple[int, ...]
+    strides: tuple[int, ...]
+    paddings: tuple[int, ...]
+    output_paddings: tuple[int, ...]
+    observation_shape: tuple[int, int, int]
+
+    @property
+    def activation(self) -> nn.Module:
+        """Return the activation function."""
+        return getattr(nn, self.activation_name)
+
+    @property
+    def out_activation(self) -> nn.Module:
+        """Return the activation function."""
+        return getattr(nn, self.out_activation_name)
+
+
 class Decoder(nn.Module):
     """Image Decoder."""
 
-    def __init__(  # noqa: PLR0913
-        self,
-        linear_sizes: tuple[int, ...],
-        activation_name: str,
-        out_activation_name: str,
-        channels: tuple[int, ...],
-        kernel_sizes: tuple[int, ...],
-        strides: tuple[int, ...],
-        paddings: tuple[int, ...],
-        output_paddings: tuple[int, ...],
-        observation_shape: tuple[int, int, int],
-    ) -> None:
+    def __init__(self, config: DecoderConfig) -> None:
         """Set hyperparameters."""
         super().__init__()
-        self.linear_sizes = linear_sizes
-        self.activation_name = activation_name
-        self.out_activation_name = out_activation_name
-        self.channels = channels
-        self.kernel_sizes = kernel_sizes
-        self.strides = strides
-        self.paddings = paddings
-        self.output_paddings = output_paddings
-        self.observation_shape = observation_shape
-
+        self.config = config
         self.model = self.build()
 
     def build(self) -> nn.Sequential:
         """Build the model as `nn.Sequential`."""
         seq: list[nn.Module] = []
 
-        linear_sizes = (*self.linear_sizes, prod(self.convt_out_shape))
+        linear_sizes = (*self.config.linear_sizes, prod(self.convt_out_shape))
         for linear_size_pair in pairwise(linear_sizes):
-            seq += [nn.Linear(*linear_size_pair), self.activation()]
+            seq += [nn.Linear(*linear_size_pair), self.config.activation()]
 
         rearrange = Rearrange(
             "b (c h w) -> b c h w",
@@ -144,13 +146,13 @@ class Decoder(nn.Module):
         )
         seq += [rearrange]
 
-        channels = (*self.channels, self.observation_shape[0])
+        channels = (*self.config.channels, self.config.observation_shape[0])
         for channel_io, kernel_size, stride, padding, output_padding in zip(
             pairwise(channels),
-            self.kernel_sizes,
-            self.strides,
-            self.paddings,
-            self.output_paddings,
+            self.config.kernel_sizes,
+            self.config.strides,
+            self.config.paddings,
+            self.config.output_paddings,
         ):
             conv = nn.ConvTranspose2d(
                 in_channels=channel_io[0],
@@ -161,35 +163,25 @@ class Decoder(nn.Module):
                 output_padding=output_padding,
             )
             norm = nn.BatchNorm2d(channel_io[1])
-            seq += [conv, norm, self.activation()]
+            seq += [conv, norm, self.config.activation()]
 
         seq[-2] = nn.Identity()
-        seq[-1] = self.out_activation()
+        seq[-1] = self.config.out_activation()
         return nn.Sequential(*seq)
 
     @property
     def convt_out_shape(self) -> tuple[int, int, int]:
         """Return the output shape of the convolutional layers."""
-        _, h, w = self.observation_shape
+        _, h, w = self.config.observation_shape
         for kernel_size, stride, padding, out_pad in zip(
-            reversed(self.kernel_sizes),
-            reversed(self.strides),
-            reversed(self.paddings),
-            reversed(self.output_paddings),
+            reversed(self.config.kernel_sizes),
+            reversed(self.config.strides),
+            reversed(self.config.paddings),
+            reversed(self.config.output_paddings),
         ):
             h = calc_convt_out_size(h, padding, kernel_size, stride, out_pad)
             w = calc_convt_out_size(w, padding, kernel_size, stride, out_pad)
-        return self.channels[0], h, w
-
-    @property
-    def activation(self) -> nn.Module:
-        """Return the activation function."""
-        return getattr(nn, self.activation_name)
-
-    @property
-    def out_activation(self) -> nn.Module:
-        """Return the activation function."""
-        return getattr(nn, self.out_activation_name)
+        return self.config.channels[0], h, w
 
     def forward(self, features: Tensor) -> Tensor:
         """Reconstruct observation(s) from features."""

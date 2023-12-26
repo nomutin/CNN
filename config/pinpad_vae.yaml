@@ -1,64 +1,65 @@
 model:
   _target_: cnn.module.VAE
-  encoder:
-    _target_: cnn.network.Encoder
+  encoder_config:
+    _target_: cnn.network.EncoderConfig
     linear_sizes:
-      - 512
-      - 256
+      _target_: builtins.tuple
+      _args_:
+        - [128, 64]
     activation_name: ELU
     out_activation_name: Identity
     channels:
-      - 16
-      - 32
-      - 64
+      _target_: builtins.tuple
+      _args_:
+        - [8, 16, 32]
     kernel_sizes:
-      - 3
-      - 3
-      - 3
+      _target_: builtins.tuple
+      _args_:
+        - [3, 3, 3]
     strides:
-      - 2
-      - 2
-      - 2
+      _target_: builtins.tuple
+      _args_:
+        - [2, 2, 2]
     paddings:
-      - 1
-      - 1
-      - 1
+      _target_: builtins.tuple
+      _args_:
+        - [1, 1, 1]
     observation_shape:
-      - 3
-      - 64
-      - 64
-
-  decoder:
-    _target_: cnn.network.Decoder
+      _target_: builtins.tuple
+      _args_:
+        - [3, 64, 64]
+  decoder_config:
+    _target_: cnn.network.DecoderConfig
     linear_sizes:
-      - 128
-      - 512
+      _target_: builtins.tuple
+      _args_:
+        - [32, 128]
     activation_name: ELU
     out_activation_name: Sigmoid
     channels:
-      - 64
-      - 32
-      - 16
+      _target_: builtins.tuple
+      _args_:
+        - [32, 16, 8]
     kernel_sizes:
-      - 4
-      - 4
-      - 4
+      _target_: builtins.tuple
+      _args_:
+        - [4, 4, 4]
     strides:
-      - 2
-      - 2
-      - 2
+      _target_: builtins.tuple
+      _args_:
+        - [2, 2, 2]
     paddings:
-      - 1
-      - 1
-      - 1
+      _target_: builtins.tuple
+      _args_:
+        - [1, 1, 1]
     output_paddings:
-      - 0
-      - 0
-      - 0
+      _target_: builtins.tuple
+      _args_:
+        - [0, 0, 0]
     observation_shape:
-      - 3
-      - 64
-      - 64
+      _target_: builtins.tuple
+      _args_:
+        - [3, 64, 64]
 
 datamodule:
   _target_: cnn.datamodule.CNNDataModule
@@ -78,7 +79,7 @@ trainer:
   accelerator: gpu
   devices:
     - 1
-  max_epochs: 5000
+  max_epochs: -1
   gradient_clip_val: 10
   deterministic: true
   precision: 16-mixed
@@ -90,7 +91,7 @@ callbacks:
   -
     _target_: lightning.pytorch.callbacks.EarlyStopping
     monitor: val_loss
-    patience: 500
+    patience: 100
     verbose: true
   -
     _target_: cnn.callbacks.LogCNNOutput
