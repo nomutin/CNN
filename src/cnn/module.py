@@ -4,6 +4,7 @@ Define convolutional encoder-decoder models.
 Impletemtations
 ---------------
 - Variational Autoencoder (VAE)
+- Categorical Autoencoder
 """
 
 from __future__ import annotations
@@ -53,7 +54,7 @@ class VAE(lightning.LightningModule):
             - distribution: torch.distributions.Independent
         """
         obs_embed = self.encoder(observations)
-        mean, std = obs_embed.chunk(2, dim=1)
+        mean, std = obs_embed.chunk(2, dim=-1)
         std = tf.softplus(std)
         distribution = td.Independent(td.Normal(mean, std), 1)
         sample = distribution.rsample()
