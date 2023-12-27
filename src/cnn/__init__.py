@@ -1,7 +1,7 @@
 """CNN module core."""
 
 from cnn.module import VAE
-from cnn.network import Decoder, Encoder, EncoderConfig, DecoderConfig
+from cnn.network import Decoder, DecoderConfig, Encoder, EncoderConfig
 
 __all__ = [
     "VAE",

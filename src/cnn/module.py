@@ -4,7 +4,6 @@ Define convolutional encoder-decoder models.
 Impletemtations
 ---------------
 - Variational Autoencoder (VAE)
-- Categorical Autoencoder
 """
 
 from __future__ import annotations

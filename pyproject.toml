@@ -1,6 +1,6 @@
 [project]
 name = "cnn"
-version = "0.1.1"
+version = "1.0.0"
 description = "Add your description here"
 dependencies = [
     "einops>=0.7.0",
@@ -70,8 +70,8 @@ warn_redundant_casts = true          # 不要な型変換に警告
 warn_unreachable = true              # 到達不能なコードに警告
 warn_unused_configs = true           # 使用されていないconfigオプションに警告
 warn_unused_ignores = true           # 使用されていない`# type: ignore`コメントに警告
-disallow_untyped_calls = true        # 型注釈がない関数やメソッドの呼び出しを禁止
-warn_return_any = true               # `Any`型を返す関数やメソッドに警告
+disallow_untyped_calls = false       # 型注釈がない関数やメソッドの呼び出しを禁止
+warn_return_any = false              # `Any`型を返す関数やメソッドに警告
 
 [tool.ruff]
 select = ["ALL"]
