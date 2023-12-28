@@ -1,7 +1,7 @@
 [project]
 name = "cnn"
-version = "1.0.0"
-description = "Add your description here"
+version = "1.0.1"
+description = "CNN"
 dependencies = [
     "einops>=0.7.0",
     "hydra-core>=1.3.2",

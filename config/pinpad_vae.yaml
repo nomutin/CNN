@@ -5,13 +5,13 @@ model:
     linear_sizes:
       _target_: builtins.tuple
       _args_:
-        - [128, 64]
+        - [512, 128]
     activation_name: ELU
     out_activation_name: Identity
     channels:
       _target_: builtins.tuple
       _args_:
-        - [8, 16, 32]
+        - [16, 32, 64]
     kernel_sizes:
       _target_: builtins.tuple
       _args_:
@@ -33,13 +33,13 @@ model:
     linear_sizes:
       _target_: builtins.tuple
       _args_:
-        - [32, 128]
+        - [64, 512]
     activation_name: ELU
     out_activation_name: Sigmoid
     channels:
       _target_: builtins.tuple
       _args_:
-        - [32, 16, 8]
+        - [64, 32, 16]
     kernel_sizes:
       _target_: builtins.tuple
       _args_:
@@ -64,7 +64,7 @@ model:
 datamodule:
   _target_: cnn.datamodule.CNNDataModule
   data_name: pinpad_observation
-  batch_size: 512
+  batch_size: 1024
   num_workers: 4
   transforms:
     _target_: torchvision.transforms.Compose

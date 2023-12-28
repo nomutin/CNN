@@ -15,9 +15,9 @@ import lightning
 import torch
 import torch.distributions as td
 import torch.nn.functional as tf
+import wandb
 from torch import Tensor, optim
 
-import wandb
 from cnn.loss import kl_between_standart_normal, likelihood
 from cnn.network import Decoder, DecoderConfig, Encoder, EncoderConfig
 
