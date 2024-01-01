@@ -1,29 +1,20 @@
 """Download robot data from Google Drive."""
 
-from __future__ import annotations
-
-import argparse
 import tarfile
 from pathlib import Path
 
+import click
 import gdown
 
-DATA_INDICES = {
-    "pinpad_observation": "",
-}
 
-
-def main(data_name: str) -> None:
+@click.command()
+@click.argument("url", type=str)
+def main(url: str) -> None:
     """Download the data specified in `data_names`."""
-    url = f"https://drive.google.com/uc?id={DATA_INDICES[data_name]}"
-    tar_path = f"data/{data_name}.tar.gz"
-    gdown.download(url, tar_path, quiet=False)
-    tarfile.open(tar_path, "r:gz").extractall()
-    Path(tar_path).unlink(missing_ok=False)
+    filename = gdown.download(url, quiet=False, fuzzy=True)
+    tarfile.open(filename, "r:gz").extractall()
+    Path(filename).unlink(missing_ok=False)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data", type=str)
-    args = parser.parse_args()
-    main(data_name=args.data)
+    main()

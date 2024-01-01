@@ -1,11 +1,13 @@
 model:
-  _target_: cnn.module.VAE
+  _target_: cnn.module.CategoricalAE
+  class_size: 8
+  category_size: 8
   encoder_config:
     _target_: cnn.network.EncoderConfig
     linear_sizes:
       _target_: builtins.tuple
       _args_:
-        - [512, 128]
+        - [512, 64]
     activation_name: ELU
     out_activation_name: Identity
     channels:
@@ -78,7 +80,7 @@ trainer:
   _target_: lightning.Trainer
   accelerator: gpu
   devices:
-    - 1
+    - 2 
   max_epochs: -1
   gradient_clip_val: 10
   deterministic: true

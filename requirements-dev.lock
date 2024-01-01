@@ -22,6 +22,7 @@ cmake==3.28.1
 contourpy==1.1.1
 coverage==7.3.3
 cycler==0.12.1
+distribution-extention @ git+https://github.com/nomutin/distribution-extention.git
 docker-pycreds==0.4.0
 einops==0.7.0
 exceptiongroup==1.2.0

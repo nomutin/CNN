@@ -4,6 +4,7 @@ Define convolutional encoder-decoder models.
 Impletemtations
 ---------------
 - Variational Autoencoder (VAE)
+- Categorical Autoencoder (CategoricalAE)
 """
 
 from __future__ import annotations
@@ -13,12 +14,14 @@ from typing import Any
 
 import lightning
 import torch
-import torch.distributions as td
-import torch.nn.functional as tf
+import wandb
+from distribution_extention import (
+    MultiDimentionalOneHotCategoricalFactory,
+    NormalFactory,
+)
 from torch import Tensor, optim
 
-import wandb
-from cnn.loss import kl_between_standart_normal, likelihood
+from cnn.loss import likelihood
 from cnn.network import Decoder, DecoderConfig, Encoder, EncoderConfig
 
 
@@ -35,6 +38,7 @@ class VAE(lightning.LightningModule):
         self.save_hyperparameters()
         self.encoder = Encoder(encoder_config)
         self.decoder = Decoder(decoder_config)
+        self.distribution_factory = NormalFactory()
 
     def configure_optimizers(self) -> optim.Optimizer:
         """Choose what optimizers to use."""
@@ -48,17 +52,13 @@ class VAE(lightning.LightningModule):
         -------
         dict:
             Includes k:v below.
-            - mean: Tensor
             - obs_embed: Tensor
             - distribution: torch.distributions.Independent
         """
         obs_embed = self.encoder(observations)
-        mean, std = obs_embed.chunk(2, dim=-1)
-        std = tf.softplus(std)
-        distribution = td.Independent(td.Normal(mean, std), 1)
+        distribution = self.distribution_factory(obs_embed)
         sample = distribution.rsample()
         return {
-            "mean": mean,
             "obs_embed": sample,
             "distribution": distribution,
         }
@@ -88,7 +88,7 @@ class VAE(lightning.LightningModule):
             target=targets,
             event_ndims=3,
         )
-        kl_loss = kl_between_standart_normal(distribution)
+        kl_loss = distribution.kl_divergence_starndard_normal()
         return {
             "loss": recon_loss + kl_loss,
             "reconstruction": recon_loss,
@@ -116,3 +116,58 @@ class VAE(lightning.LightningModule):
             ckpt_name, cpu = "best_model.ckpt", torch.device("cpu")
             ckpt = run.file(ckpt_name).download(replace=True, root=tmpdir)
             return cls.load_from_checkpoint(ckpt.name, map_location=cpu)
+
+
+class CategoricalAE(VAE):
+    """Categorical Auto Encoder."""
+
+    def __init__(
+        self,
+        encoder_config: EncoderConfig,
+        decoder_config: DecoderConfig,
+        class_size: int,
+        category_size: int,
+    ) -> None:
+        """Set networks."""
+        super().__init__(encoder_config, decoder_config)
+        self.save_hyperparameters(class_size, category_size)
+        self.class_size = class_size
+        self.category_size = category_size
+        self.distribution_factory = MultiDimentionalOneHotCategoricalFactory(
+            category_size=category_size,
+            class_size=class_size,
+        )
+
+    def encode(self, observation: Tensor) -> dict[str, Any]:
+        """
+        Encode images into latent.
+
+        Returns
+        -------
+        dict:
+            Includes k:v below.
+            - logit: Tensor
+            - obs_embed: Tensor
+            - distribution: torch.distributions.Independent
+        """
+        obs_embed = self.encoder.forward(observation)
+        distribution = self.distribution_factory(obs_embed)
+        sample = distribution.rsample()
+        return {
+            "logit": obs_embed,
+            "obs_embed": sample,
+            "distribution": distribution,
+        }
+
+    def _shared_step(self, batch: list[Tensor]) -> dict[str, Tensor]:
+        """Return the loss of the batch."""
+        inputs, targets = batch
+        encoder_output = self.encode(inputs)
+        obs_embed = encoder_output["obs_embed"]
+        reconstruction = self.decode(obs_embed)["reconstruction"]
+        recon_loss = torch.nn.functional.mse_loss(
+            input=reconstruction,
+            target=targets,
+            reduction="mean",
+        )
+        return {"loss": recon_loss}
