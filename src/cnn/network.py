@@ -67,6 +67,11 @@ class Encoder(nn.Module):
             norm = nn.BatchNorm2d(channel_io[1])
             seq += [conv, norm, self.config.activation()]
 
+        if 0 in self.config.linear_sizes:
+            seq[-1] = self.config.out_activation()
+            seq += [nn.Flatten()]
+            return nn.Sequential(*seq)
+
         seq += [nn.Flatten()]
         linear_sizes = (prod(self.conv_out_shape), *self.config.linear_sizes)
         for linear_size_pair in pairwise(linear_sizes):
