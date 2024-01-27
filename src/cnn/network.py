@@ -24,7 +24,16 @@ class EncoderConfig:
     kernel_sizes: tuple[int, ...]
     strides: tuple[int, ...]
     paddings: tuple[int, ...]
-    observation_shape: tuple[int, int, int]
+    observation_shape: tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        """Make a non-tuple Iterable attributes into tuples."""
+        self.linear_sizes = tuple(self.linear_sizes)
+        self.channels = tuple(self.channels)
+        self.kernel_sizes = tuple(self.kernel_sizes)
+        self.strides = tuple(self.strides)
+        self.paddings = tuple(self.paddings)
+        self.observation_shape = tuple(self.observation_shape)
 
     @property
     def activation(self) -> nn.Module:
@@ -113,7 +122,17 @@ class DecoderConfig:
     strides: tuple[int, ...]
     paddings: tuple[int, ...]
     output_paddings: tuple[int, ...]
-    observation_shape: tuple[int, int, int]
+    observation_shape: tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        """Make a non-tuple Iterable attributes into tuples."""
+        self.linear_sizes = tuple(self.linear_sizes)
+        self.channels = tuple(self.channels)
+        self.kernel_sizes = tuple(self.kernel_sizes)
+        self.strides = tuple(self.strides)
+        self.paddings = tuple(self.paddings)
+        self.output_paddings = tuple(self.output_paddings)
+        self.observation_shape = tuple(self.observation_shape)
 
     @property
     def activation(self) -> nn.Module:
