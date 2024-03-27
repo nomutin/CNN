@@ -1,39 +1,35 @@
-clean:
-	rm -rf .mypy_cache/ .pytest_cache/ .ruff_cache wandb && rm -f .coverage coverage.xml && find . -type d -name __pycache__ -exec rm -r {} +
+help:
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	sort | \
+	awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-install:
-	if command -v rye >/dev/null 2>&1; then \
-		rye sync --no-lock; \
-	elif command -v pipenv >/dev/null 2>&1; then \
-		pipenv install -r requirements-dev.lock --skip-lock; \
-	else \
-		pip install -r requirements-dev.lock; \
-	fi
+clean:  ## 実行に影響のないファイル(.*_cacheとか)を削除
+	rm -rf .mypy_cache/ .pytest_cache/ .ruff_cache/ wandb/ && \
+	rm -f .coverage coverage.xml *.out && \
+	find . -type d -name __pycache__ -exec rm -r {} +
 
+format:  ## コードのフォーマット(isort->black->ruff)
+	isort . && \
+	black . && \
+	ruff format .
 
-isort-format:
-	isort .
+lint:  ## コードのLint(isort->black->mypy->ruff)
+	isort . --check && \
+	black . --check && \
+	mypy --strict . && \
+	ruff check .
 
-isort-check:
-	isort --check-only .
+install:  ## 仮想環境の作成
+	rye sync --no-lock && \
+	rye run pre-commit install
 
-black-format:
-	black .
+train:  ## `make train f=<path_to_config>` で学習を実行
+	python scripts/train.py fit --config $(f)
 
-black-check:
-	black src/ --check 
+debug: ## `make debug f=<path_to_config>` でデバック用epochを回す
+	python scripts/train.py fit --config $(f) --trainer.fast_dev_run true
 
-ruff-format:
-	ruff --fix .
+download: ## `make download l=<url>` でgoogle driveからダウンロード
+	python scripts/download.py $(l)
 
-ruff-check:
-	ruff src/
-
-format: isort-format black-format ruff-format
-
-lint: isort-check black-check ruff-check
-
-test:
-	pytest -ra --cov=src --cov-report=term --cov-report=xml
-
-.PHONY: clean install format lint test
+.PHONY: help clean format lint install train debug download
