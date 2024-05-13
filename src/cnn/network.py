@@ -35,17 +35,17 @@ class EncoderConfig:
         self.observation_shape = tuple(self.observation_shape)
 
     @property
-    def activation(self) -> nn.Module:
+    def activation(self) -> type[nn.Module]:
         """Return the activation function."""
-        if isinstance(m := getattr(nn, self.activation_name), nn.Module):
+        if issubclass(m := getattr(nn, self.activation_name), nn.Module):
             return m
         msg = f"Activation function not found: {self.activation_name}"
         raise AttributeError(msg)
 
     @property
-    def out_activation(self) -> nn.Module:
+    def out_activation(self) -> type[nn.Module]:
         """Return the activation function."""
-        if isinstance(m := getattr(nn, self.out_activation_name), nn.Module):
+        if issubclass(m := getattr(nn, self.out_activation_name), nn.Module):
             return m
         msg = f"Activation function not found: {self.out_activation_name}"
         raise AttributeError(msg)
@@ -140,17 +140,17 @@ class DecoderConfig:
         self.observation_shape = tuple(self.observation_shape)
 
     @property
-    def activation(self) -> nn.Module:
+    def activation(self) -> type[nn.Module]:
         """Return the activation function."""
-        if isinstance(m := getattr(nn, self.activation_name), nn.Module):
+        if issubclass(m := getattr(nn, self.activation_name), nn.Module):
             return m
         msg = f"Activation function not found: {self.activation_name}"
         raise AttributeError(msg)
 
     @property
-    def out_activation(self) -> nn.Module:
+    def out_activation(self) -> type[nn.Module]:
         """Return the activation function."""
-        if isinstance(m := getattr(nn, self.out_activation_name), nn.Module):
+        if issubclass(m := getattr(nn, self.out_activation_name), nn.Module):
             return m
         msg = f"Activation function not found: {self.out_activation_name}"
         raise AttributeError(msg)
