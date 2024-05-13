@@ -1,6 +1,6 @@
 [project]
 name = "cnn"
-version = "1.0.2"
+version = "1.0.3"
 description = "CNN"
 dependencies = [
     "einops>=0.7.0",
