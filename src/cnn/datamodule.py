@@ -10,8 +10,10 @@ from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import Compose
 
+from cnn.custom_types import DataGroup
 
-class CNNDataset(Dataset):
+
+class CNNDataset(Dataset[DataGroup]):
     """Observation pytorch dataset."""
 
     def __init__(self, path_to_data: Path, transforms: Compose) -> None:
@@ -28,9 +30,12 @@ class CNNDataset(Dataset):
     def load_data(self, idx: int) -> Tensor:
         """Load observation data (sequence)."""
         observation_path = self.path_to_data / f"observation_{idx}.pt"
-        return torch.load(observation_path)
+        if isinstance(observation := torch.load(observation_path), Tensor):
+            return observation
+        msg = f"Data type not supported: {type(observation)}"
+        raise FileNotFoundError(msg)
 
-    def __getitem__(self, idx: int) -> tuple[Tensor, Tensor]:
+    def __getitem__(self, idx: int) -> DataGroup:
         """Apply transforms to and return input & target Tensors."""
         data = self.load_data(idx)
         return self.transforms(data), data
@@ -67,7 +72,7 @@ class CNNDataModule(lightning.LightningDataModule):
             transforms=Compose([]),
         )
 
-    def train_dataloader(self) -> DataLoader:
+    def train_dataloader(self) -> DataLoader[DataGroup]:
         """Define training dataloader."""
         return DataLoader(
             dataset=self.train_dataset,
@@ -76,7 +81,7 @@ class CNNDataModule(lightning.LightningDataModule):
             num_workers=self.num_workers,
         )
 
-    def val_dataloader(self) -> DataLoader:
+    def val_dataloader(self) -> DataLoader[DataGroup]:
         """Define validation dataloader."""
         return DataLoader(
             dataset=self.val_dataset,

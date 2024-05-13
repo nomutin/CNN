@@ -1,5 +1,4 @@
-"""
-Define convolutional encoder-decoder models.
+"""Define convolutional encoder-decoder models.
 
 Impletemtations
 ---------------
@@ -10,22 +9,61 @@ Impletemtations
 from __future__ import annotations
 
 import tempfile
-from typing import Any
+from typing import TYPE_CHECKING
 
-import lightning
 import torch
 import wandb
-from distribution_extention import (
-    MultiDimentionalOneHotCategoricalFactory,
+from distribution_extension import (
+    MultiOneHot,
+    MultiOneHotFactory,
+    Normal,
     NormalFactory,
 )
-from torch import Tensor, optim
+from lightning import LightningModule
+from torch import Tensor
 
 from cnn.loss import likelihood
 from cnn.network import Decoder, DecoderConfig, Encoder, EncoderConfig
 
+if TYPE_CHECKING:
+    from cnn.custom_types import DataGroup, LossDict
 
-class VAE(lightning.LightningModule):
+
+class AE(LightningModule):
+    """Base class for autoencoders."""
+
+    def shared_step(self, batch: DataGroup) -> LossDict:
+        """Return the loss of the batch."""
+        raise NotImplementedError
+
+    def training_step(self, batch: DataGroup, **_: int) -> LossDict:
+        """Rollout training step."""
+        loss_dict = self.shared_step(batch)
+        self.log_dict(loss_dict, prog_bar=True, sync_dist=True)
+        return loss_dict
+
+    def validation_step(self, batch: DataGroup, _: int) -> LossDict:
+        """Rollout validation step."""
+        loss_dict = self.shared_step(batch)
+        loss_dict = {"val_" + k: v for k, v in loss_dict.items()}
+        self.log_dict(loss_dict, prog_bar=True, sync_dist=True)
+        return loss_dict
+
+    @classmethod
+    def load_from_wandb(cls, reference: str) -> VAE:
+        """Load the model from wandb checkpoint."""
+        run = wandb.Api().run(reference)  # type: ignore[no-untyped-call]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ckpt_name, cpu = "best_model.ckpt", torch.device("cpu")
+            ckpt = run.file(ckpt_name).download(replace=True, root=tmpdir)
+            model = cls.load_from_checkpoint(ckpt.name, map_location=cpu)
+        if isinstance(model, VAE):
+            return model
+        msg = f"Model type not supported: {type(model)}"
+        raise ValueError(msg)
+
+
+class VAE(AE):
     """Variational Auto Encoder."""
 
     def __init__(
@@ -40,49 +78,21 @@ class VAE(lightning.LightningModule):
         self.decoder = Decoder(decoder_config)
         self.distribution_factory = NormalFactory()
 
-    def configure_optimizers(self) -> optim.Optimizer:
-        """Choose what optimizers to use."""
-        return optim.AdamW(self.parameters(), lr=1e-3)
-
-    def encode(self, observations: Tensor) -> dict[str, Any]:
-        """
-        Encode images into latent.
-
-        Returns
-        -------
-        dict:
-            Includes k:v below.
-            - obs_embed: Tensor
-            - distribution: torch.distributions.Independent
-        """
+    def encode(self, observations: Tensor) -> Normal:
+        """Encode the observations and return the latent distribution."""
         obs_embed = self.encoder(observations)
-        distribution = self.distribution_factory(obs_embed)
-        sample = distribution.rsample()
-        return {
-            "obs_embed": sample,
-            "distribution": distribution,
-        }
+        return self.distribution_factory.forward(obs_embed)
 
-    def decode(self, obs_embed: Tensor) -> dict[str, Any]:
-        """
-        Reconstruct images from latent.
+    def decode(self, obs_embed: Tensor) -> Tensor:
+        """Decode the latent representation."""
+        return self.decoder.forward(obs_embed)
 
-        Returns
-        -------
-        dict:
-            Includes k:v below.
-            - reconstruction: Tensor
-        """
-        return {"reconstruction": self.decoder(obs_embed)}
-
-    def _shared_step(self, batch: list[Tensor]) -> dict[str, Tensor]:
+    def shared_step(self, batch: DataGroup) -> LossDict:
         """Return the loss of the batch."""
         inputs, targets = batch
-        encoder_output = self.encode(inputs)
-        distribution = encoder_output["distribution"]
-        obs_embed = encoder_output["obs_embed"]
-        reconstruction = self.decode(obs_embed)["reconstruction"]
-
+        distribution = self.encode(inputs)
+        obs_embed = distribution.rsample()
+        reconstruction = self.decode(obs_embed)
         recon_loss = likelihood(
             prediction=reconstruction,
             target=targets,
@@ -95,30 +105,8 @@ class VAE(lightning.LightningModule):
             "kl divergence": kl_loss,
         }
 
-    def training_step(self, batch: list, **_: dict) -> dict[str, Tensor]:
-        """Rollout training step."""
-        loss_dict = self._shared_step(batch)
-        self.log_dict(loss_dict, prog_bar=True, sync_dist=True)
-        return loss_dict
 
-    def validation_step(self, batch: list, _: int) -> dict[str, Tensor]:
-        """Rollout validation step."""
-        loss_dict = self._shared_step(batch)
-        loss_dict = {"val_" + k: v for k, v in loss_dict.items()}
-        self.log_dict(loss_dict, prog_bar=True, sync_dist=True)
-        return loss_dict
-
-    @classmethod
-    def load_from_wandb(cls, reference: str) -> VAE:
-        """Load the model from wandb checkpoint."""
-        run = wandb.Api().run(reference)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            ckpt_name, cpu = "best_model.ckpt", torch.device("cpu")
-            ckpt = run.file(ckpt_name).download(replace=True, root=tmpdir)
-            return cls.load_from_checkpoint(ckpt.name, map_location=cpu)
-
-
-class CategoricalAE(VAE):
+class CategoricalAE(AE):
     """Categorical Auto Encoder."""
 
     def __init__(
@@ -131,40 +119,30 @@ class CategoricalAE(VAE):
         """Set networks."""
         super().__init__(encoder_config, decoder_config)
         self.save_hyperparameters(class_size, category_size)
+        self.encoder = Encoder(encoder_config)
+        self.decoder = Decoder(decoder_config)
         self.class_size = class_size
         self.category_size = category_size
-        self.distribution_factory = MultiDimentionalOneHotCategoricalFactory(
+        self.distribution_factory = MultiOneHotFactory(
             category_size=category_size,
             class_size=class_size,
         )
 
-    def encode(self, observation: Tensor) -> dict[str, Any]:
-        """
-        Encode images into latent.
-
-        Returns
-        -------
-        dict:
-            Includes k:v below.
-            - logit: Tensor
-            - obs_embed: Tensor
-            - distribution: torch.distributions.Independent
-        """
+    def encode(self, observation: Tensor) -> MultiOneHot:
+        """Encode the observation and return the latent distribution."""
         obs_embed = self.encoder.forward(observation)
-        distribution = self.distribution_factory(obs_embed)
-        sample = distribution.rsample()
-        return {
-            "logit": obs_embed,
-            "obs_embed": sample,
-            "distribution": distribution,
-        }
+        return self.distribution_factory.forward(obs_embed)
 
-    def _shared_step(self, batch: list[Tensor]) -> dict[str, Tensor]:
+    def decode(self, obs_embed: Tensor) -> Tensor:
+        """Decode the latent representation."""
+        return self.decoder.forward(obs_embed)
+
+    def shared_step(self, batch: DataGroup) -> LossDict:
         """Return the loss of the batch."""
         inputs, targets = batch
-        encoder_output = self.encode(inputs)
-        obs_embed = encoder_output["obs_embed"]
-        reconstruction = self.decode(obs_embed)["reconstruction"]
+        distribution = self.encode(inputs)
+        obs_embed = distribution.rsample()
+        reconstruction = self.decode(obs_embed)
         recon_loss = torch.nn.functional.mse_loss(
             input=reconstruction,
             target=targets,

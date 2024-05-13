@@ -5,10 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import lightning
-from lightning.pytorch.callbacks import RichProgressBar
-from lightning.pytorch.callbacks.progress.rich_progress import (
-    RichProgressBarTheme,
-)
 from lightning.pytorch.loggers import WandbLogger
 
 from cnn.module import VAE
@@ -17,29 +13,6 @@ from cnn.visualize import pca, to_wandb_images, to_wandb_scatter
 if TYPE_CHECKING:
     from lightning.pytorch.utilities.types import STEP_OUTPUT
     from torch import Tensor
-
-
-class ProgressBarCallback(RichProgressBar):
-    """
-    Make the progress bar richer.
-
-    References
-    ----------
-    * https://qiita.com/akihironitta/items/edfd6b29dfb67b17fb00
-    """
-
-    def __init__(self) -> None:
-        """Rich progress bar with custom theme."""
-        theme = RichProgressBarTheme(
-            description="green_yellow",
-            progress_bar="green1",
-            progress_bar_finished="green1",
-            batch_progress="green_yellow",
-            time="grey82",
-            processing_speed="grey82",
-            metrics="grey82",
-        )
-        super().__init__(theme=theme)
 
 
 class LogCNNOutput(lightning.Callback):
@@ -51,7 +24,7 @@ class LogCNNOutput(lightning.Callback):
         self.every_n_epochs = every_n_epochs
         self.indices = indices
 
-    def on_validation_batch_end(  # noqa: PLR0913
+    def on_validation_batch_end(
         self,
         trainer: lightning.Trainer,
         pl_module: lightning.LightningModule,
@@ -69,8 +42,9 @@ class LogCNNOutput(lightning.Callback):
             return
 
         inputs, targets = batch
-        obs_embed = pl_module.encode(inputs)["obs_embed"]
-        recon = pl_module.decode(obs_embed)["reconstruction"]
+        distribution = pl_module.encode(inputs)
+        obs_embed = distribution.rsample()
+        recon = pl_module.decode(obs_embed)
         obs_embed_pca, variance_ratio = pca(obs_embed)
         latent_fig = to_wandb_scatter(
             data=obs_embed_pca.detach().cpu(),

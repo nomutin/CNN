@@ -5,7 +5,7 @@ description = "CNN"
 dependencies = [
     "einops>=0.7.0",
     "wandb>=0.16.1",
-    "distribution_extention @ git+https://github.com/nomutin/distribution-extention.git",
+    "distribution-extension @ git+https://github.com/nomutin/distribution-extension.git",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
@@ -17,79 +17,58 @@ build-backend = "hatchling.build"
 [tool.rye]
 managed = true
 dev-dependencies = [
-    "torch==2.0.1+cu117",
-    "torchvision==0.15.2+cu117",
-    "lightning>=2.1.2",
+    "torch>=2.3.0",
+    "torchvision>=0.18.0",
     "rich>=13.7.0",
     "gdown>=4.7.1",
     "matplotlib>=3.7.4",
-    "isort>=5.13.2",
     "pytest-cov>=4.1.0",
-    "black>=23.12.0",
-    "ruff>=0.1.8",
     "mypy>=1.7.1",
     "hydra-core>=1.3.2",
+    "torch>=2.3.0",
+    "torchvision>=0.18.0",
+    "lightning>=2.2.4",
+    "ruff>=0.4.4",
 ]
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
-[[tool.rye.sources]]
-name = "torch"
-url = "https://download.pytorch.org/whl/cu117"
-type = "index"
-
-[tool.black]
-line-length = 79
-
 [tool.pytest.ini_options]
 filterwarnings = [
     "ignore::UserWarning",
     "ignore::DeprecationWarning",
-    'ignore:distutils Version classes are deprecated.:DeprecationWarning',
 ]
 
 [tool.mypy]
 python_version = 3.8
-# following setting is same as pysen
-# https://github.com/pfnet/pysen/blob/main/setup.cfg#L12
-check_untyped_defs = true            # 型注釈がない関数やメソッドに対して型チェックを行う
-disallow_any_decorated = false 
-disallow_any_generics = false
-disallow_any_unimported = false
-disallow_incomplete_defs = true      # 型注釈の一部が欠けている関数やメソッドの定義を禁止
-disallow_subclassing_any = true
-disallow_untyped_decorators = true   # 型注釈がないデコレータの使用を禁止
-disallow_untyped_defs = true         # 型注釈がない関数やメソッドの定義を禁止
-ignore_errors = false                # エラーを無視
-ignore_missing_imports = true        # 型チェック対象外のモジュールを無視
-no_implicit_optional = true          # 暗黙のOptionalを禁止
-show_error_codes = true              # エラーコードを表示
-strict_equality = true               # 異なる型同士の比較を禁止
-strict_optional = true               # Noneと他の型の混在を許容しない
-warn_redundant_casts = true          # 不要な型変換に警告
-warn_unreachable = true              # 到達不能なコードに警告
-warn_unused_configs = true           # 使用されていないconfigオプションに警告
-warn_unused_ignores = true           # 使用されていない`# type: ignore`コメントに警告
-disallow_untyped_calls = false       # 型注釈がない関数やメソッドの呼び出しを禁止
-warn_return_any = false              # `Any`型を返す関数やメソッドに警告
+ignore_missing_imports = true
 
 [tool.ruff]
+line-length = 79
+target-version = "py38"
+
+[tool.ruff.lint]
+preview = true
 select = ["ALL"]
 ignore = [
-    "D203",  # one-blank-line-before-class
-    "D212",  # multi-line-summary-first-line
-    "S101", # Use of assert detected
-    "ANN",  # Missing type annotation for `self` or `cls`
-    "I",
+    "CPY001",  # missing-copyright-notice
+    "ISC001",  # single-line-implicit-string-concatenation
+    "COM812",  # missing-comma-in-multiline
+    "PLR0913", # too-many-arguments
+    "PLR0917", # too-many-positional-arguments
+    "S101",    # assert
 ]
 fixable = ["ALL"]
 unfixable = []
 exclude = [".git", ".ruff_cache", ".venv",]
-line-length = 79
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
-target-version = "py38"
 
-[tool.isort]
-profile = "black"
-line_length = 79
+[tool.ruff.format]
+preview = true
+
+[tool.ruff.lint.isort]
+known-first-party = ["rssm"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"

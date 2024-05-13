@@ -39,9 +39,8 @@ def pca(data: Tensor, n_components: int = 2) -> tuple[Tensor, Tensor]:
 
     Returns
     -------
-    Tensor
+    tuple[Tensor, Tensor]
         PCA-transformed data. Tensor shaped [batch*, n_components].
-    Tensor
         Explained variance ratio. Tensor shaped [n_components].
     """
     data, ps = pack([data], "* d")

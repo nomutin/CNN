@@ -1,6 +1,5 @@
 """Encoder/Decoder."""
 
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -38,12 +37,18 @@ class EncoderConfig:
     @property
     def activation(self) -> nn.Module:
         """Return the activation function."""
-        return getattr(nn, self.activation_name)
+        if isinstance(m := getattr(nn, self.activation_name), nn.Module):
+            return m
+        msg = f"Activation function not found: {self.activation_name}"
+        raise AttributeError(msg)
 
     @property
     def out_activation(self) -> nn.Module:
         """Return the activation function."""
-        return getattr(nn, self.out_activation_name)
+        if isinstance(m := getattr(nn, self.out_activation_name), nn.Module):
+            return m
+        msg = f"Activation function not found: {self.out_activation_name}"
+        raise AttributeError(msg)
 
 
 class Encoder(nn.Module):
@@ -106,7 +111,7 @@ class Encoder(nn.Module):
     def forward(self, observations: Tensor) -> Tensor:
         """Encode observation(s) into features."""
         observations, ps = pack([observations], "* c h w")
-        feature = self.model.forward(observations)
+        feature: Tensor = self.model.forward(observations)
         return unpack(feature, ps, "* d")[0]
 
 
@@ -137,12 +142,18 @@ class DecoderConfig:
     @property
     def activation(self) -> nn.Module:
         """Return the activation function."""
-        return getattr(nn, self.activation_name)
+        if isinstance(m := getattr(nn, self.activation_name), nn.Module):
+            return m
+        msg = f"Activation function not found: {self.activation_name}"
+        raise AttributeError(msg)
 
     @property
     def out_activation(self) -> nn.Module:
         """Return the activation function."""
-        return getattr(nn, self.out_activation_name)
+        if isinstance(m := getattr(nn, self.out_activation_name), nn.Module):
+            return m
+        msg = f"Activation function not found: {self.out_activation_name}"
+        raise AttributeError(msg)
 
 
 class Decoder(nn.Module):
@@ -210,5 +221,5 @@ class Decoder(nn.Module):
     def forward(self, features: Tensor) -> Tensor:
         """Reconstruct observation(s) from features."""
         features, ps = pack([features], "* d")
-        reconstruction = self.model.forward(features)
+        reconstruction: Tensor = self.model.forward(features)
         return unpack(reconstruction, ps, "* c h w")[0]
