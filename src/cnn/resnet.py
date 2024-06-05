@@ -11,7 +11,7 @@ from einops.layers.torch import Rearrange
 from torch import Tensor, nn
 
 
-class VisionEncoder(nn.Module):
+class PretrainerEncoder(nn.Module):
     """
     事前学習済みモデルを使うエンコーダ.
 
@@ -89,7 +89,7 @@ class ResidualBlock(nn.Module):
         return x + self.conv_block(x)
 
 
-class VisionResNetDecoder(nn.Module):
+class ResNetDecoder(nn.Module):
     """
     ResNet-based decoder.
 

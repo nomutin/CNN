@@ -1,6 +1,14 @@
 """Tests for `utils.py`."""
 
-from cnn.utils import calc_conv_out_size, calc_convt_out_size, pairwise
+from torch import Tensor
+
+from cnn.utils import (
+    calc_conv_out_size,
+    calc_convt_out_size,
+    coord_conv,
+    pairwise,
+)
+from tests.conftest import batch_size, channels, height, width
 
 
 def test__pairwise() -> None:
@@ -35,3 +43,9 @@ def test__calc_convt_out_size() -> None:
         output_padding=0,
     )
     assert out_size == expected
+
+
+def test__coord_conv(sample_4d_data: Tensor) -> None:
+    """Test `coord_conv`."""
+    out = coord_conv(sample_4d_data)
+    assert out.shape == (batch_size, channels + 2, height, width)
