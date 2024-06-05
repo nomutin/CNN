@@ -7,7 +7,7 @@ from itertools import tee
 
 import torch
 from einops import repeat
-from torch import Tensor, arange
+from torch import Tensor, arange, nn
 
 
 def pairwise(iterable: tuple[int, ...]) -> list[tuple[int, int]]:
@@ -77,3 +77,11 @@ def coord_conv(x: Tensor) -> Tensor:
     coords = torch.stack((y_coords, x_coords), dim=0).to(x.device)
     coords = repeat(coords, "C H W -> B C H W", B=b)
     return torch.cat((coords, x), dim=1)
+
+
+def get_activation(activation_name: str) -> type[nn.Module]:
+    """Get activation function from its name."""
+    if issubclass(m := getattr(nn, activation_name), nn.Module):
+        return m
+    msg = f"Activation function not found: {activation_name}"
+    raise AttributeError(msg)

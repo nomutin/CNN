@@ -120,7 +120,7 @@ class ResNetDecoder(nn.Module):
             nn.Linear(embed_size, 256),
             nn.ELU(),
             nn.Linear(256, height // 4 * width // 4),
-            Rearrange("B (H W) -> B 1 H W", H=height // 4, W=width // 4)
+            Rearrange("B (H W) -> B 1 H W", H=height // 4, W=width // 4),
         )
 
         # First layer

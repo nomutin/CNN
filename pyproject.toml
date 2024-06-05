@@ -31,6 +31,9 @@ filterwarnings = [
     "ignore::DeprecationWarning",
 ]
 
+[tool.rye.scripts]
+cov = "pytest -ra --cov=src --cov-report=term --cov-report=xml"
+
 [tool.mypy]
 python_version = 3.8
 ignore_missing_imports = true
