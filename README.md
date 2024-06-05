@@ -2,6 +2,7 @@
 
 ![python](https://img.shields.io/badge/python-3.8-blue)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![CI](https://github.com/nomutin/CNN/actions/workflows/ci.yaml/badge.svg)](https://github.com/nomutin/CNN/actions/workflows/ci.yaml)
 
 ## Installation
 
