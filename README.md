@@ -2,19 +2,11 @@
 
 ![python](https://img.shields.io/badge/python-3.8-blue)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![black](https://img.shields.io/badge/code%20style-black-black.svg)](https://github.com/psf/black)
-
-Small project for pre-training of CNN encoder/decoder.
-
-## API
-
-```python
-from cnn import VAE
-
-vae = VAE.load_from_wandb(reference=<wandb reference>)
-```
+[![CI](https://github.com/nomutin/CNN/actions/workflows/ci.yaml/badge.svg)](https://github.com/nomutin/CNN/actions/workflows/ci.yaml)
 
 ## Installation
+
+色々なプロジェクトで使う画像エンコーダ・デコーダの実装をまとめたパッケージ
 
 ### pip
 

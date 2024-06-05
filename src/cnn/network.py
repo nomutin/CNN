@@ -9,7 +9,12 @@ from einops import pack, unpack
 from einops.layers.torch import Rearrange
 from torch import Tensor, nn
 
-from cnn.utils import calc_conv_out_size, calc_convt_out_size, pairwise
+from cnn.utils import (
+    calc_conv_out_size,
+    calc_convt_out_size,
+    get_activation,
+    pairwise,
+)
 
 
 @dataclass
@@ -33,22 +38,8 @@ class EncoderConfig:
         self.strides = tuple(self.strides)
         self.paddings = tuple(self.paddings)
         self.observation_shape = tuple(self.observation_shape)
-
-    @property
-    def activation(self) -> type[nn.Module]:
-        """Return the activation function."""
-        if issubclass(m := getattr(nn, self.activation_name), nn.Module):
-            return m
-        msg = f"Activation function not found: {self.activation_name}"
-        raise AttributeError(msg)
-
-    @property
-    def out_activation(self) -> type[nn.Module]:
-        """Return the activation function."""
-        if issubclass(m := getattr(nn, self.out_activation_name), nn.Module):
-            return m
-        msg = f"Activation function not found: {self.out_activation_name}"
-        raise AttributeError(msg)
+        self.activation = get_activation(self.activation_name)
+        self.out_activation = get_activation(self.out_activation_name)
 
 
 class Encoder(nn.Module):
@@ -138,22 +129,8 @@ class DecoderConfig:
         self.paddings = tuple(self.paddings)
         self.output_paddings = tuple(self.output_paddings)
         self.observation_shape = tuple(self.observation_shape)
-
-    @property
-    def activation(self) -> type[nn.Module]:
-        """Return the activation function."""
-        if issubclass(m := getattr(nn, self.activation_name), nn.Module):
-            return m
-        msg = f"Activation function not found: {self.activation_name}"
-        raise AttributeError(msg)
-
-    @property
-    def out_activation(self) -> type[nn.Module]:
-        """Return the activation function."""
-        if issubclass(m := getattr(nn, self.out_activation_name), nn.Module):
-            return m
-        msg = f"Activation function not found: {self.out_activation_name}"
-        raise AttributeError(msg)
+        self.activation = get_activation(self.activation_name)
+        self.out_activation = get_activation(self.out_activation_name)
 
 
 class Decoder(nn.Module):
@@ -221,5 +198,5 @@ class Decoder(nn.Module):
     def forward(self, features: Tensor) -> Tensor:
         """Reconstruct observation(s) from features."""
         features, ps = pack([features], "* d")
-        reconstruction: Tensor = self.model.forward(features)
+        reconstruction = self.model(features)
         return unpack(reconstruction, ps, "* c h w")[0]
