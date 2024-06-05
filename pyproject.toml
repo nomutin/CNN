@@ -5,6 +5,7 @@ description = "CNN"
 dependencies = [
     "einops>=0.7.0",
     "torch>=2.3.0",
+    "timm>=1.0.3",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"

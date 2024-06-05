@@ -221,5 +221,5 @@ class Decoder(nn.Module):
     def forward(self, features: Tensor) -> Tensor:
         """Reconstruct observation(s) from features."""
         features, ps = pack([features], "* d")
-        reconstruction: Tensor = self.model.forward(features)
+        reconstruction = self.model(features)
         return unpack(reconstruction, ps, "* c h w")[0]

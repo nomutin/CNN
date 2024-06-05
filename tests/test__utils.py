@@ -5,7 +5,7 @@ from cnn.utils import calc_conv_out_size, calc_convt_out_size, pairwise
 
 def test__pairwise() -> None:
     """Test `pairwise`."""
-    inputs = [1, 2, 3, 4]
+    inputs = (1, 2, 3, 4)
     targets = [(1, 2), (2, 3), (3, 4)]
     assert pairwise(inputs) == targets
 
