@@ -53,30 +53,36 @@ def calc_convt_out_size(
     return math.floor(size) + 1
 
 
-def coord_conv(x: Tensor) -> Tensor:
+class CoordConv2d(nn.Module):
     """
     Add coordinate channels to the input tensor.
 
     References
     ----------
     * https://github.com/Wizaron/coord-conv-pytorch
-
-    Parameters
-    ----------
-    x : Tensor
-        Batched image tensor. shape=[B, C, H, W]
-
-    Returns
-    -------
-    Tensor
-        Batched image tensor with coordinate channels. shape=[B, C + 2, H, W]
     """
-    b, _, h, w = x.size()
-    y_coords = repeat(arange(h), "h -> h w", w=w).mul(2).div(h - 1).sub(1)
-    x_coords = repeat(arange(w), "w -> h w", h=h).mul(2).div(w - 1).sub(1)
-    coords = torch.stack((y_coords, x_coords), dim=0).to(x.device)
-    coords = repeat(coords, "C H W -> B C H W", B=b)
-    return torch.cat((coords, x), dim=1)
+
+    def forward(self, x: Tensor) -> Tensor:  # noqa: PLR6301
+        """
+        Forward pass.
+
+        Parameters
+        ----------
+        x : Tensor
+            Batched image tensor. shape=[B, C, H, W]
+
+        Returns
+        -------
+        Tensor
+            Batched image tensor with coordinate channels.
+            shape=[B, C + 2, H, W]
+        """
+        b, _, h, w = x.size()
+        y_coords = repeat(arange(h), "h -> h w", w=w).mul(2).div(h - 1).sub(1)
+        x_coords = repeat(arange(w), "w -> h w", h=h).mul(2).div(w - 1).sub(1)
+        coords = torch.stack((y_coords, x_coords), dim=0).to(x.device)
+        coords = repeat(coords, "C H W -> B C H W", B=b)
+        return torch.cat((coords, x), dim=1)
 
 
 def get_activation(activation_name: str) -> type[nn.Module]:
