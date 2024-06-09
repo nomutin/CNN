@@ -8,6 +8,7 @@ from math import prod
 from einops import pack, unpack
 from einops.layers.torch import Rearrange
 from torch import Tensor, nn
+from torchgeometry.contrib import SpatialSoftArgmax2d
 
 from cnn.utils import (
     CoordConv2d,
@@ -79,13 +80,9 @@ class Encoder(nn.Module):
             seq += [conv, norm, self.config.activation()]
 
         if self.config.spatial_softmax:
-            from torchgeometry.contrib import SpatialSoftmax2d  # noqa: PLC0415
+            seq += [SpatialSoftArgmax2d()]
 
-            seq += [SpatialSoftmax2d()]
-            seq += [Rearrange("b c xy -> b (c xy)")]
-        else:
-            seq += [nn.Flatten()]
-
+        seq += [nn.Flatten()]
         linear_sizes = (prod(self.conv_out_shape), *self.config.linear_sizes)
         for linear_size_pair in pairwise(linear_sizes):
             seq += [nn.Linear(*linear_size_pair), self.config.activation()]
@@ -105,6 +102,10 @@ class Encoder(nn.Module):
         ):
             h = calc_conv_out_size(h, padding, kernel_size, stride)
             w = calc_conv_out_size(w, padding, kernel_size, stride)
+
+        if self.config.spatial_softmax:
+            return self.config.channels[-1], 2, 1
+
         return self.config.channels[-1], h, w
 
     def forward(self, observations: Tensor) -> Tensor:
