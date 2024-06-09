@@ -10,6 +10,7 @@ from einops.layers.torch import Rearrange
 from torch import Tensor, nn
 
 from cnn.utils import (
+    CoordConv2d,
     calc_conv_out_size,
     calc_convt_out_size,
     get_activation,
@@ -29,6 +30,8 @@ class EncoderConfig:
     strides: tuple[int, ...]
     paddings: tuple[int, ...]
     observation_shape: tuple[int, ...]
+    coord_conv: bool = False
+    spatial_softmax: bool = False
 
     def __post_init__(self) -> None:
         """Make a non-tuple Iterable attributes into tuples."""
@@ -55,6 +58,9 @@ class Encoder(nn.Module):
         """Build the model as `nn.Sequential`."""
         seq: list[nn.Module] = []
 
+        if self.config.coord_conv:
+            seq += [CoordConv2d()]
+
         channels = (self.config.observation_shape[0], *self.config.channels)
         for channel_io, kernel_size, stride, padding in zip(
             pairwise(channels),
@@ -72,12 +78,14 @@ class Encoder(nn.Module):
             norm = nn.BatchNorm2d(channel_io[1])
             seq += [conv, norm, self.config.activation()]
 
-        if 0 in self.config.linear_sizes:
-            seq[-1] = self.config.out_activation()
-            seq += [nn.Flatten()]
-            return nn.Sequential(*seq)
+        if self.config.spatial_softmax:
+            from torchgeometry.contrib import SpatialSoftmax2d  # noqa: PLC0415
 
-        seq += [nn.Flatten()]
+            seq += [SpatialSoftmax2d()]
+            seq += [Rearrange("b c xy -> b (c xy)")]
+        else:
+            seq += [nn.Flatten()]
+
         linear_sizes = (prod(self.conv_out_shape), *self.config.linear_sizes)
         for linear_size_pair in pairwise(linear_sizes):
             seq += [nn.Linear(*linear_size_pair), self.config.activation()]
