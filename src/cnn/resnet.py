@@ -56,7 +56,7 @@ class PretrainerEncoder(nn.Module):
         x, ps = pack([x], "* C H W")
         x = self.encoder(x)
         x = self.mlp(x)
-        return unpack(x, ps, "*, D")[0]
+        return unpack(x, ps, "* D")[0]
 
 
 class ResidualBlock(nn.Module):
@@ -182,4 +182,4 @@ class ResNetDecoder(nn.Module):
         out = self.upsampling(out)
         out = self.conv3(out)
 
-        return unpack(out, ps, "*, C H W")[0]
+        return unpack(out, ps, "* C H W")[0]
