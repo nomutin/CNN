@@ -104,6 +104,9 @@ class ResNetDecoder(nn.Module):
     def __init__(self, config: DecoderConfig) -> None:
         super().__init__()
         channels, height, width = config.observation_shape
+        if config.depth == 0:
+            msg = "In `ResNetDecoder`, `depth` must be greater than 0."
+            raise ValueError(msg)
 
         self.mlp = nn.Sequential(
             nn.Linear(config.linear_sizes[0], 256),
