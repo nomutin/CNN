@@ -88,6 +88,6 @@ class CoordConv2d(nn.Module):
 def get_activation(activation_name: str) -> type[nn.Module]:
     """Get activation function from its name."""
     if issubclass(m := getattr(nn, activation_name), nn.Module):
-        return m
+        return m  # type: ignore[no-any-return]
     msg = f"Activation function not found: {activation_name}"
     raise AttributeError(msg)

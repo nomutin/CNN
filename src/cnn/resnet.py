@@ -10,23 +10,25 @@ from einops import pack, unpack
 from einops.layers.torch import Rearrange
 from torch import Tensor, nn
 
+from cnn.config import DecoderConfig, EncoderConfig
+from cnn.utils import get_activation
+
 
 class PretrainerEncoder(nn.Module):
     """
-    事前学習済みモデルを使うエンコーダ.
+    事前学習済みモデル(`efficientnet_b0`)を使うエンコーダ.
 
     Parameters
     ----------
-    backbone_name : str
-        事前学習済みモデル名.
-    obs_embed_size : int
-        画像をエンコードするサイズ.
+    config : EncoderConfig
+        エンコーダの設定.
+        .linear_sizes[-1] のみが使用される.
     """
 
-    def __init__(self, backbone_name: str, obs_embed_size: int) -> None:
+    def __init__(self, config: EncoderConfig) -> None:
         super().__init__()
         self.encoder = timm.create_model(
-            backbone_name,
+            model_name="efficientnet_b0",
             pretrained=True,
             num_classes=0,
         )
@@ -35,7 +37,7 @@ class PretrainerEncoder(nn.Module):
         self.mlp = nn.Sequential(
             nn.Linear(in_features, 128),
             nn.Mish(),
-            nn.Linear(128, obs_embed_size),
+            nn.Linear(128, config.linear_sizes[-1]),
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -86,7 +88,7 @@ class ResidualBlock(nn.Module):
         Tensor
             出力データ. Shape: (B, C, H, W).
         """
-        return x + self.conv_block(x)
+        return x + self.conv_block.forward(x)
 
 
 class ResNetDecoder(nn.Module):
@@ -95,29 +97,16 @@ class ResNetDecoder(nn.Module):
 
     Parameters
     ----------
-    n_residual_blocks : int
-        Residual blockの数.
-    embed_size : int
-        入力の次元.
-    height : int
-        再構成する画像の高さ.
-    width : int
-        再構成する画像の幅.
+    config : DecoderConfig
+        Decoder の設定.
     """
 
-    def __init__(
-        self,
-        n_residual_blocks: int = 16,
-        embed_size: int = 16,
-        height: int = 128,
-        width: int = 128,
-    ) -> None:
+    def __init__(self, config: DecoderConfig) -> None:
         super().__init__()
-
-        out_channels = 3
+        channels, height, width = config.observation_shape
 
         self.mlp = nn.Sequential(
-            nn.Linear(embed_size, 256),
+            nn.Linear(config.linear_sizes[0], 256),
             nn.ELU(),
             nn.Linear(256, height // 4 * width // 4),
             Rearrange("B (H W) -> B 1 H W", H=height // 4, W=width // 4),
@@ -130,7 +119,7 @@ class ResNetDecoder(nn.Module):
         )
 
         # Residual blocks
-        res_blocks = [ResidualBlock(64) for _ in range(n_residual_blocks)]
+        res_blocks = [ResidualBlock(64) for _ in range(config.depth)]
         self.res_blocks = nn.Sequential(*res_blocks)
 
         # Second conv layer post residual blocks
@@ -152,8 +141,8 @@ class ResNetDecoder(nn.Module):
 
         # Final output layer
         self.conv3 = nn.Sequential(
-            nn.Conv2d(64, out_channels, kernel_size=9, stride=1, padding=4),
-            nn.Sigmoid(),
+            nn.Conv2d(64, channels, kernel_size=9, stride=1, padding=4),
+            get_activation(config.out_activation_name)(),
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -182,4 +171,4 @@ class ResNetDecoder(nn.Module):
         out = self.upsampling(out)
         out = self.conv3(out)
 
-        return unpack(out, ps, "* C H W")[0]
+        return unpack(out, ps, "* C H W")[0]  # type: ignore[no-any-return]

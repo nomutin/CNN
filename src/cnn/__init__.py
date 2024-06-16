@@ -1,6 +1,7 @@
 """CNN module core."""
 
-from cnn.network import Decoder, DecoderConfig, Encoder, EncoderConfig
+from cnn.config import DecoderConfig, EncoderConfig
+from cnn.network import Decoder, Encoder
 from cnn.resnet import PretrainerEncoder, ResNetDecoder
 from cnn.utils import CoordConv2d
 
