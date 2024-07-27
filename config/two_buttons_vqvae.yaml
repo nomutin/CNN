@@ -1,0 +1,96 @@
+---
+seed_everything: 42
+
+model:
+  class_path: cnn.ObservationModule
+  init_args:
+    encoder_config:
+      linear_sizes: [0, 0]
+      activation_name: Mish
+      out_activation_name: Identity
+      channels: [32, 64, 128, 128, 128]
+      paddings: [1, 1, 1, 1, 1]
+      kernel_sizes: [3, 3, 3, 3, 3]
+      strides: [2, 2, 2, 1, 1]
+      observation_shape: [3, 64, 64]
+      num_residual_blocks: 3
+      residual_intermediate_size: 128
+      residual_output_size: 4
+      coord_conv: True
+      vector_quantize: True
+    decoder_config:
+      linear_sizes: [0, 0]
+      activation_name: Mish
+      out_activation_name: Sigmoid
+      conv_in_shape: [4, 8, 8]
+      channels: [128, 128, 64, 32, 3]
+      paddings: [1, 1, 1, 1, 1]
+      kernel_sizes: [3, 3, 4, 4, 4]
+      strides: [1, 1, 2, 2, 2]
+      output_paddings: [0, 0, 0, 0, 0]
+      observation_shape: [3, 64, 64]
+      num_residual_blocks: 3
+      residual_intermediate_size: 128
+      residual_input_size: 128
+
+optimizer:
+  class_path: torch.optim.AdamW
+  init_args:
+    lr: 0.001
+
+lr_scheduler:
+  class_path: lightning.pytorch.cli.ReduceLROnPlateau
+  init_args:
+    mode: min
+    factor: 0.5
+    patience: 25
+    monitor: val_loss
+
+trainer:
+  accelerator: gpu
+  max_epochs: -1
+  gradient_clip_val: 10
+  deterministic: true
+  precision: 16-mixed
+  log_every_n_steps: 1
+  logger:
+    class_path: WandbLogger
+    init_args:
+      log_model: true
+      project: vqvae_two_buttons
+      save_dir: .venv
+  callbacks:
+    -
+      class_path: EarlyStopping
+      init_args:
+        monitor: val_loss
+        patience: 50
+        mode: min
+        verbose: True
+    - 
+      class_path: ModelCheckpoint
+      init_args:
+        monitor: val_loss
+        mode: min
+        save_top_k: 1
+    -
+      class_path: cnn.callback.LogReconsrtuctions
+      init_args:
+        every_n_epochs: 50
+        num_samples: 16
+
+data:
+  class_path: cnn.dataset.EpisodeObservationDataModule
+  init_args:
+    batch_size: 512
+    num_workers: 4
+    data_name: two_buttons
+    gdrive_url: https://drive.google.com/file/d/1tgDsrif9c43ZZ25798r3jFp_6XOJCKvW/view?usp=drive_link
+    preprocess:
+      class_path: torchvision.transforms.Compose
+      init_args:
+        transforms:
+          - class_path: torchvision.transforms.ToTensor
+          - class_path: torchvision.transforms.Resize
+            init_args:
+              size: [64, 64]

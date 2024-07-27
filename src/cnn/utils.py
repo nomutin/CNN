@@ -1,56 +1,50 @@
 """Utility functions."""
 
-from __future__ import annotations
-
-import math
-from itertools import tee
-
 import torch
 from einops import repeat
 from torch import Tensor, arange, nn
 
 
-def pairwise(iterable: tuple[int, ...]) -> list[tuple[int, int]]:
-    """S -> (s0,s1), (s1,s2), (s2, s3), ..."""
-    a, b = tee(iterable)
-    next(b, None)
-    return list(zip(a, b))
+class ResidualBlock(nn.Module):
+    """Residual block."""
 
+    def __init__(
+        self,
+        io: int,
+        intermediate: int,
+        activation_name: str,
+    ) -> None:
+        super().__init__()
+        self.activation = get_activation(activation_name)()
+        self.skip = nn.Sequential(
+            nn.Conv2d(io, intermediate, kernel_size=1),
+            nn.BatchNorm2d(intermediate),
+            self.activation,
+            nn.Conv2d(intermediate, intermediate, kernel_size=3, padding=1),
+            nn.BatchNorm2d(intermediate),
+            self.activation,
+            nn.Conv2d(intermediate, io, kernel_size=1),
+            nn.BatchNorm2d(io),
+        )
 
-def calc_conv_out_size(
-    in_size: int,
-    padding: int,
-    kernel_size: int,
-    stride: int,
-) -> int:
-    """
-    Calculate the output size of a convolutional layer.
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        順伝播.
 
-    References
-    ----------
-    * https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
+        Parameters
+        ----------
+        x : Tensor
+            入力データ. Shape: (B, C, H, W).
 
-    """
-    return math.floor((in_size + 2 * padding - kernel_size) / stride + 1)
-
-
-def calc_convt_out_size(
-    in_size: int,
-    padding: int,
-    kernel_size: int,
-    stride: int,
-    output_padding: int,
-) -> int:
-    """
-    Calculate the output size of a convolutional layer.
-
-    References
-    ----------
-    * https://pytorch.org/docs/stable/generated/torch.nn.ConvTranspose2d.html
-
-    """
-    size = (in_size + 2 * padding - kernel_size - output_padding) / stride
-    return math.floor(size) + 1
+        Returns
+        -------
+        Tensor
+            出力データ. Shape: (B, C, H, W).
+        """
+        identity = x.clone()
+        x = self.skip(x)
+        x += identity
+        return self.activation(x)
 
 
 class CoordConv2d(nn.Module):
@@ -86,8 +80,25 @@ class CoordConv2d(nn.Module):
 
 
 def get_activation(activation_name: str) -> type[nn.Module]:
-    """Get activation function from its name."""
+    """
+    Get activation function from its name.
+
+    Parameters
+    ----------
+    activation_name : str
+        Activation function name.
+
+    Returns
+    -------
+    type[nn.Module]
+        Activation function.
+
+    Raises
+    ------
+    AttributeError
+        If the activation function is not found in `torch.nn`.
+    """
     if issubclass(m := getattr(nn, activation_name), nn.Module):
-        return m  # type: ignore[no-any-return]
+        return m
     msg = f"Activation function not found: {activation_name}"
     raise AttributeError(msg)

@@ -1,9 +1,9 @@
 """CNN module core."""
 
 from cnn.config import DecoderConfig, EncoderConfig
+from cnn.module import ObservationModule
 from cnn.network import Decoder, Encoder
-from cnn.resnet import PretrainerEncoder, ResNetDecoder
-from cnn.utils import CoordConv2d
+from cnn.utils import CoordConv2d, ResidualBlock
 
 __all__ = [
     "CoordConv2d",
@@ -11,6 +11,6 @@ __all__ = [
     "DecoderConfig",
     "Encoder",
     "EncoderConfig",
-    "PretrainerEncoder",
-    "ResNetDecoder",
+    "ObservationModule",
+    "ResidualBlock",
 ]
