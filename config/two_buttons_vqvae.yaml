@@ -82,7 +82,7 @@ trainer:
 data:
   class_path: cnn.dataset.EpisodeObservationDataModule
   init_args:
-    batch_size: 512
+    batch_size: 1024
     num_workers: 4
     data_name: two_buttons
     gdrive_url: https://drive.google.com/file/d/1tgDsrif9c43ZZ25798r3jFp_6XOJCKvW/view?usp=drive_link

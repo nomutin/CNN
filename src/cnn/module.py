@@ -19,9 +19,10 @@ class ObservationModule(LightningModule):
     def __init__(self, encoder_config: EncoderConfig, decoder_config: DecoderConfig) -> None:
         """Set Hyperparameters."""
         super().__init__()
-        self.save_hyperparameters()
         self.encoder = Encoder(encoder_config)
         self.decoder = Decoder(decoder_config)
+        config = {"encoder_config": encoder_config, "decoder_config": decoder_config}
+        self.save_hyperparameters(config)
 
     def shared_step(self, batch: tuple[Tensor, ...]) -> dict[str, Tensor]:
         """Shared training/validation step."""
