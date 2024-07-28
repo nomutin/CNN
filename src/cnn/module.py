@@ -16,11 +16,7 @@ from cnn.network import Decoder, Encoder
 class ObservationModule(LightningModule):
     """Base class for autoencoder models."""
 
-    def __init__(
-        self,
-        encoder_config: EncoderConfig,
-        decoder_config: DecoderConfig,
-    ) -> None:
+    def __init__(self, encoder_config: EncoderConfig, decoder_config: DecoderConfig) -> None:
         """Set Hyperparameters."""
         super().__init__()
         self.save_hyperparameters()

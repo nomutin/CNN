@@ -1,5 +1,6 @@
 """Networks."""
 
+from einops import pack, unpack
 from einops.layers.torch import Rearrange
 from torch import Tensor, nn
 from torchgeometry.contrib import SpatialSoftArgmax2d
@@ -20,6 +21,7 @@ class Encoder(nn.Module):
         self.conv = self.build_conv()
         self.res_block = self.build_res_block()
         self.post_conv = self.build_post_conv()
+        self.flatten = nn.Flatten()
         self.linear = self.build_linear()
 
     def build_pre_conv(self) -> nn.Sequential:
@@ -82,7 +84,6 @@ class Encoder(nn.Module):
         """Build the linear layers."""
         linear_list: list[nn.Module] = []
         if 0 not in self.config.linear_sizes:
-            linear_list += [nn.Flatten()]
             for linear_size in self.config.linear_sizes:
                 linear_list += [nn.LazyLinear(linear_size), self.config.activation()]
             linear_list[-1] = self.config.out_activation()
@@ -90,11 +91,14 @@ class Encoder(nn.Module):
 
     def forward(self, observations: Tensor) -> Tensor:
         """Encode observation(s) into features."""
+        observations, ps = pack([observations], "* c h w")
         feature_map = self.pre_conv(observations)
         feature_map = self.conv(feature_map)
         feature_map = self.res_block(feature_map)
-        feature = self.post_conv(feature_map)[0] if self.config.vector_quantize else self.post_conv(feature_map)
-        return self.linear(feature)
+        feature_map = self.post_conv(feature_map)[0] if self.config.vector_quantize else self.post_conv(feature_map)
+        feature = self.flatten(feature_map)
+        feature = self.linear(feature)
+        return unpack(feature, ps, "* d")[0]
 
 
 class Decoder(nn.Module):
@@ -105,6 +109,12 @@ class Decoder(nn.Module):
         super().__init__()
         self.config = config
         self.linear = self.build_linear()
+        self.rearrange = Rearrange(
+            pattern="b (c h w) -> b c h w",
+            c=self.config.conv_in_shape[0],
+            h=self.config.conv_in_shape[1],
+            w=self.config.conv_in_shape[2],
+        )
         self.res_block = self.build_res_block()
         self.conv = self.build_conv()
 
@@ -115,13 +125,6 @@ class Decoder(nn.Module):
             for linear_size in self.config.linear_sizes:
                 linear_list += [nn.LazyLinear(linear_size)]
                 linear_list += [self.config.activation()]
-            rearrange = Rearrange(
-                pattern="b c h w -> b (c h w)",
-                c=self.config.conv_in_shape[0],
-                h=self.config.conv_in_shape[1],
-                w=self.config.conv_in_shape[2],
-            )
-            linear_list += [rearrange]
         return nn.Sequential(*linear_list)
 
     def build_res_block(self) -> nn.Sequential:
@@ -170,6 +173,9 @@ class Decoder(nn.Module):
 
     def forward(self, features: Tensor) -> Tensor:
         """Reconstruct observation(s) from features."""
+        features, ps = pack([features], "* d")
         feature = self.linear(features)
-        feature = self.res_block(feature)
-        return self.conv(feature)
+        feature_map = self.rearrange(feature)
+        feature_map = self.res_block(feature_map)
+        reconstructions = self.conv(feature_map)
+        return unpack(reconstructions, ps, "* c h w")[0]

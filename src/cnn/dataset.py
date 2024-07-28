@@ -1,9 +1,9 @@
 """Simple DataModule Implementation."""
 
-
 import tarfile
 from collections.abc import Callable
 from pathlib import Path
+from typing import TypeAlias
 
 import gdown
 import numpy as np
@@ -13,10 +13,12 @@ from torch import Tensor, nn
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
+Augmentation: TypeAlias = Callable[[Tensor], Tensor]
 
-def split_train_validation(
+
+def split_path_list(
     path_list: list[Path],
-    train_ratio: float = 0.8,
+    train_ratio: float = 0.9,
 ) -> tuple[list[Path], list[Path]]:
     """Pathのリストを`train_ratio`で分割する."""
     split_point = int(len(path_list) * train_ratio)
@@ -26,11 +28,7 @@ def split_train_validation(
 class EpisodeObservaionDataset(Dataset[tuple[Tensor, Tensor]]):
     """観測のデータセット."""
 
-    def __init__(
-        self,
-        path_list: list[Path],
-        augmentation: Callable[[Tensor], Tensor],
-    ) -> None:
+    def __init__(self, path_list: list[Path], augmentation: Augmentation) -> None:
         super().__init__()
         self.path_list = path_list
         self.augmentation = augmentation
@@ -55,8 +53,8 @@ class EpisodeObservationDataModule(LightningDataModule):
         num_workers: int,
         data_name: str,
         gdrive_url: str,
-        preprocess: Callable[[Tensor], Tensor] | None = None,
-        augmentation: Callable[[Tensor], Tensor] | None = None,
+        preprocess: Augmentation | None = None,
+        augmentation: Augmentation | None = None,
     ) -> None:
         super().__init__()
         self.batch_size = batch_size
@@ -94,7 +92,7 @@ class EpisodeObservationDataModule(LightningDataModule):
     def setup(self, stage: str) -> None:  # noqa: ARG002
         """Train/Val/Testデータセットのセットアップ."""
         path_list = sorted(self.processed_data_dir.glob("observation_*.pt"))
-        train_path_list, val_path_list = split_train_validation(path_list)
+        train_path_list, val_path_list = split_path_list(path_list)
         self.train_dataset = EpisodeObservaionDataset(
             path_list=train_path_list,
             augmentation=self.augmentation,
