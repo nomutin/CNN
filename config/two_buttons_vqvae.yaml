@@ -2,7 +2,7 @@
 seed_everything: 42
 
 model:
-  class_path: cnn.ObservationModule
+  class_path: cnn.VQObservationModule
   init_args:
     encoder_config:
       linear_sizes: [0, 0]
@@ -17,7 +17,6 @@ model:
       residual_intermediate_size: 128
       residual_output_size: 4
       coord_conv: True
-      vector_quantize: True
     decoder_config:
       linear_sizes: [0, 0]
       activation_name: Mish
@@ -74,7 +73,7 @@ trainer:
         mode: min
         save_top_k: 1
     -
-      class_path: cnn.callback.LogReconsrtuctions
+      class_path: cnn.callback.LogVQReconstructions
       init_args:
         every_n_epochs: 50
         num_samples: 16
@@ -82,7 +81,7 @@ trainer:
 data:
   class_path: cnn.dataset.EpisodeObservationDataModule
   init_args:
-    batch_size: 1024
+    batch_size: 512
     num_workers: 4
     data_name: two_buttons
     gdrive_url: https://drive.google.com/file/d/1tgDsrif9c43ZZ25798r3jFp_6XOJCKvW/view?usp=drive_link

@@ -21,7 +21,6 @@ class EncoderConfig:
     residual_intermediate_size: int
     residual_output_size: int
     coord_conv: bool = False
-    vector_quantize: bool = False
     spatial_softmax: bool = False
 
     def __post_init__(self) -> None:

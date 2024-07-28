@@ -10,7 +10,8 @@ from torch import Tensor
 from typing_extensions import Self
 
 from cnn.config import DecoderConfig, EncoderConfig
-from cnn.network import Decoder, Encoder
+from cnn.encoder import Encoder, VQEncoder
+from cnn.decoder import Decoder
 
 
 class ObservationModule(LightningModule):
@@ -27,7 +28,7 @@ class ObservationModule(LightningModule):
     def shared_step(self, batch: tuple[Tensor, ...]) -> dict[str, Tensor]:
         """Shared training/validation step."""
         inputs, targets = batch
-        z = self.encoder(inputs)
+        z = self.encoder.training_step(inputs)
         reconstructions = self.decoder(z)
         loss = (reconstructions - targets).abs().mean()
         return {"loss": loss}
@@ -76,3 +77,13 @@ class ObservationModule(LightningModule):
             msg = f"Model is not an instance of {cls}"
             raise TypeError(msg)
         return model
+
+
+class VQObservationModule(ObservationModule):
+    """Autoencoder models with Vector Quantization."""
+
+    def __init__(self, encoder_config: EncoderConfig, decoder_config: DecoderConfig) -> None:
+        """Set Hyperparameters."""
+        super().__init__(encoder_config, decoder_config)
+        self.encoder = VQEncoder(encoder_config)
+        self.decoder = Decoder(decoder_config)
