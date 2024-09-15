@@ -16,7 +16,6 @@ class EncoderConfig:
     kernel_sizes: tuple[int, ...]
     strides: tuple[int, ...]
     paddings: tuple[int, ...]
-    observation_shape: tuple[int, ...]
     num_residual_blocks: int
     residual_intermediate_size: int
     residual_output_size: int
@@ -30,7 +29,6 @@ class EncoderConfig:
         self.kernel_sizes = tuple(self.kernel_sizes)
         self.strides = tuple(self.strides)
         self.paddings = tuple(self.paddings)
-        self.observation_shape = tuple(self.observation_shape)
         self.activation = get_activation(self.activation_name)
         self.out_activation = get_activation(self.out_activation_name)
 
@@ -47,7 +45,6 @@ class DecoderConfig:
     strides: tuple[int, ...]
     paddings: tuple[int, ...]
     output_paddings: tuple[int, ...]
-    observation_shape: tuple[int, ...]
     conv_in_shape: tuple[int, ...]
     num_residual_blocks: int
     residual_intermediate_size: int
@@ -61,7 +58,6 @@ class DecoderConfig:
         self.strides = tuple(self.strides)
         self.paddings = tuple(self.paddings)
         self.output_paddings = tuple(self.output_paddings)
-        self.observation_shape = tuple(self.observation_shape)
         self.conv_in_shape = tuple(self.conv_in_shape)
         self.activation = get_activation(self.activation_name)
         self.out_activation = get_activation(self.out_activation_name)

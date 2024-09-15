@@ -1,4 +1,3 @@
-
 """Networks."""
 
 from einops import pack, unpack
@@ -10,10 +9,9 @@ from cnn.utils import ResidualBlock
 
 
 class Decoder(nn.Module):
-    """Image Decoder."""
+    """Observation Decoder."""
 
     def __init__(self, config: DecoderConfig) -> None:
-        """Set hyperparameters."""
         super().__init__()
         self.config = config
         self.linear = self.build_linear()
@@ -27,7 +25,16 @@ class Decoder(nn.Module):
         self.conv = self.build_conv()
 
     def build_linear(self) -> nn.Sequential:
-        """Build the linear layers."""
+        """
+        Build the linear layers.
+
+        Returns
+        -------
+        nn.Sequential
+            The linear layers.
+            Input shape : Any
+            Output shape : config.linear_sizes[-1]
+        """
         linear_list: list[nn.Module] = []
         if 0 not in self.config.linear_sizes:
             for linear_size in self.config.linear_sizes:
@@ -36,7 +43,16 @@ class Decoder(nn.Module):
         return nn.Sequential(*linear_list)
 
     def build_res_block(self) -> nn.Sequential:
-        """Build the residual blocks."""
+        """
+        Build the residual blocks.
+
+        Returns
+        -------
+        nn.Sequential
+            The residual blocks.
+            Input shape : [config.conv_in_shape[0], H, W]
+            Output shape : [config.residual_input_size, H, W]
+        """
         res_block_list: list[nn.Module] = []
         if self.config.num_residual_blocks:
             conv = nn.Conv2d(
@@ -56,7 +72,16 @@ class Decoder(nn.Module):
         return nn.Sequential(*res_block_list)
 
     def build_conv(self) -> nn.Sequential:
-        """Build the convolutional layers."""
+        """
+        Build the convolutional layers.
+
+        Returns
+        -------
+        nn.Sequential
+            The convolutional layers.
+            Input shape : [Any, H, W]
+            Output shape : [config.channels[-1], H, W]
+        """
         conv_list: list[nn.Module] = []
         for out_channels, kernel_size, stride, padding, output_padding in zip(
             self.config.channels,
@@ -80,7 +105,19 @@ class Decoder(nn.Module):
         return nn.Sequential(*conv_list)
 
     def forward(self, features: Tensor) -> Tensor:
-        """Reconstruct observation(s) from features."""
+        """
+        Reconstruct observation(s) from features.
+
+        Parameters
+        ----------
+        features : Tensor
+            Features. Shape: [config.linear_sizes[-1]].
+
+        Returns
+        -------
+        Tensor
+            Reconstructed observation(s). Shape: [config.channels[0], H, W].
+        """
         features, ps = pack([features], "* d")
         feature = self.linear(features)
         feature_map = self.rearrange(feature)

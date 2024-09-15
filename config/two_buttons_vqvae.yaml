@@ -12,7 +12,6 @@ model:
       paddings: [1, 1, 1, 1, 1]
       kernel_sizes: [3, 3, 3, 3, 3]
       strides: [2, 2, 2, 1, 1]
-      observation_shape: [3, 64, 64]
       num_residual_blocks: 3
       residual_intermediate_size: 128
       residual_output_size: 4
@@ -27,7 +26,6 @@ model:
       kernel_sizes: [3, 3, 4, 4, 4]
       strides: [1, 1, 2, 2, 2]
       output_paddings: [0, 0, 0, 0, 0]
-      observation_shape: [3, 64, 64]
       num_residual_blocks: 3
       residual_intermediate_size: 128
       residual_input_size: 128

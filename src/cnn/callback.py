@@ -6,7 +6,16 @@ from lightning.pytorch.loggers import WandbLogger
 
 
 class LogReconsrtuctions(Callback):
-    """Callback to log image reconstructions to WandbLogger."""
+    """
+    Callback to log image reconstructions to WandbLogger.
+
+    Parameters
+    ----------
+    every_n_epochs : int
+        Log reconstructions every n epochs.
+    num_samples : int
+        Number of samples to log.
+    """
 
     def __init__(self, every_n_epochs: int, num_samples: int) -> None:
         super().__init__()
@@ -14,7 +23,16 @@ class LogReconsrtuctions(Callback):
         self.num_samples = num_samples
 
     def on_validation_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        """Log image reconstructions."""
+        """
+        Log image reconstructions.
+
+        Parameters
+        ----------
+        trainer : Trainer
+            The current trainer.
+        pl_module : LightningModule
+            The current module.
+        """
         if trainer.current_epoch % self.every_n_epochs != 0:
             return
 
@@ -34,7 +52,16 @@ class LogVQReconstructions(LogReconsrtuctions):
     """Callback to log VQ-VAE image reconstructions to WandbLogger."""
 
     def on_validation_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        """Log VQ-VAE image reconstructions."""
+        """
+        Log VQ-VAE image reconstructions.
+
+        Parameters
+        ----------
+        trainer : Trainer
+            The current trainer.
+        pl_module : LightningModule
+            The current module.
+        """
         if trainer.current_epoch % self.every_n_epochs != 0:
             return
 

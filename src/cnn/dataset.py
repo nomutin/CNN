@@ -18,15 +18,30 @@ Augmentation: TypeAlias = Callable[[Tensor], Tensor]
 
 def split_path_list(
     path_list: list[Path],
-    train_ratio: float = 0.9,
+    train_ratio: float = 0.8,
 ) -> tuple[list[Path], list[Path]]:
-    """Pathのリストを`train_ratio`で分割する."""
+    """
+    Split the path list into train and validation data.
+
+    Parameters
+    ----------
+    path_list : list[Path]
+        List of paths to split.
+    train_ratio : float, optional
+        Ratio of the training data, by default 0.8.
+
+    Returns
+    -------
+    tuple[list[Path], list[Path]]
+        List of paths for training and validation data.
+
+    """
     split_point = int(len(path_list) * train_ratio)
     return path_list[:split_point], path_list[split_point:]
 
 
 class EpisodeObservaionDataset(Dataset[tuple[Tensor, Tensor]]):
-    """観測のデータセット."""
+    """Dataset for observations."""
 
     def __init__(self, path_list: list[Path], augmentation: Augmentation) -> None:
         super().__init__()
@@ -34,11 +49,30 @@ class EpisodeObservaionDataset(Dataset[tuple[Tensor, Tensor]]):
         self.augmentation = augmentation
 
     def __len__(self) -> int:
-        """Return the number of data."""
+        """
+        Return the number of data.
+
+        Returns
+        -------
+        int
+            The number of data.
+        """
         return len(self.path_list)
 
     def __getitem__(self, idx: int) -> tuple[Tensor, Tensor]:
-        """Return the data at the index."""
+        """
+        Return the data at the index.
+
+        Parameters
+        ----------
+        idx : int
+            Index of the data.
+
+        Returns
+        -------
+        tuple[Tensor, Tensor]
+            Augmented observation and original observation.
+        """
         observation = torch.load(self.path_list[idx], weights_only=True)
         return self.augmentation(observation), observation
 
@@ -84,9 +118,10 @@ class EpisodeObservationDataModule(LightningDataModule):
                 data_count += 1
 
     def load_from_gdrive(self) -> None:
-        """Google Drive からデータをダウンロードする."""
+        """Download data from Google Drive."""
         filename = gdown.download(self.gdrive_url, quiet=False, fuzzy=True)
-        tarfile.open(filename, "r:gz").extractall(path=Path("data"), filter="data")
+        with tarfile.open(filename, "r:gz") as tar:
+            tar.extractall(path=Path("data"), filter="data")
         Path(filename).unlink(missing_ok=False)
 
     def setup(self, stage: str) -> None:  # noqa: ARG002
@@ -103,7 +138,14 @@ class EpisodeObservationDataModule(LightningDataModule):
         )
 
     def train_dataloader(self) -> DataLoader[tuple[Tensor, Tensor]]:
-        """Return train dataloader."""
+        """
+        Return train dataloader.
+
+        Returns
+        -------
+        DataLoader[tuple[Tensor, Tensor]]
+            Train dataloader.
+        """
         return DataLoader(
             dataset=self.train_dataset,
             batch_size=self.batch_size,
@@ -112,7 +154,14 @@ class EpisodeObservationDataModule(LightningDataModule):
         )
 
     def val_dataloader(self) -> DataLoader[tuple[Tensor, Tensor]]:
-        """Return validation dataloader."""
+        """
+        Return validation dataloader.
+
+        Returns
+        -------
+        DataLoader[tuple[Tensor, Tensor]]
+            Validation dataloader.
+        """
         return DataLoader(
             dataset=self.val_dataset,
             batch_size=self.batch_size,

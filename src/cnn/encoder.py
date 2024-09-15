@@ -10,10 +10,9 @@ from cnn.utils import CoordConv2d, ResidualBlock
 
 
 class Encoder(nn.Module):
-    """Image Encoder."""
+    """Observation Encoder."""
 
     def __init__(self, config: EncoderConfig) -> None:
-        """Set Hyperparameters."""
         super().__init__()
         self.config = config
         self.pre_conv = self.build_pre_conv()
@@ -24,14 +23,30 @@ class Encoder(nn.Module):
         self.linear = self.build_linear()
 
     def build_pre_conv(self) -> nn.Module:
-        """Build the pre-convolutional layers."""
+        """
+        Build the pre-convolutional layers.
+
+        Returns
+        -------
+        nn.Module
+            First layers of the encoder.
+            Coordinate Convolution is added if `config.coord_conv` is True.
+        """
         pre_conv_list: list[nn.Module] = []
         if self.config.coord_conv:
             pre_conv_list += [CoordConv2d()]
         return nn.Sequential(*pre_conv_list)
 
     def build_conv(self) -> nn.Sequential:
-        """Build the convolutional layers."""
+        """
+        Build the convolutional layers.
+
+        Returns
+        -------
+        nn.Sequential
+            The convolutional layers.
+            Input shape : Any
+        """
         conv_list: list[nn.Module] = []
         for out_channels, kernel_size, stride, padding in zip(
             self.config.channels,
@@ -51,7 +66,16 @@ class Encoder(nn.Module):
         return nn.Sequential(*conv_list)
 
     def build_res_block(self) -> nn.Sequential:
-        """Build the residual blocks."""
+        """
+        Build the residual blocks.
+
+        Returns
+        -------
+        nn.Sequential
+            The residual blocks.
+            Input : [config.channels[-1], H, W]
+            Output : [config.residual_output_size, H, W]
+        """
         res_block_list: list[nn.Module] = []
         if self.config.num_residual_blocks:
             for _ in range(self.config.num_residual_blocks):
@@ -71,14 +95,31 @@ class Encoder(nn.Module):
         return nn.Sequential(*res_block_list)
 
     def build_post_conv(self) -> nn.Module:
-        """Build the post-convolutional layers."""
+        """
+        Build the post-convolutional layers.
+
+        Returns
+        -------
+        nn.Module
+            Last layers of the encoder.
+            Spatial Softmax is added if `config.spatial_softmax` is True.
+        """
         post_conv_list: list[nn.Module] = []
         if self.config.spatial_softmax:
             post_conv_list += [SpatialSoftArgmax2d()]
         return nn.Sequential(*post_conv_list)
 
     def build_linear(self) -> nn.Sequential:
-        """Build the linear layers."""
+        """
+        Build the linear layers.
+
+        Returns
+        -------
+        nn.Sequential
+            The linear layers.
+            Input : [Any]
+            Output : [config.linear_sizes[-1]]
+        """
         linear_list: list[nn.Module] = []
         if 0 not in self.config.linear_sizes:
             for linear_size in self.config.linear_sizes:
@@ -88,11 +129,37 @@ class Encoder(nn.Module):
         return nn.Sequential(*linear_list)
 
     def training_step(self, observations: Tensor) -> Tensor:
-        """Encode observation(s) into features."""
+        """
+        Encode observation(s) into features.
+
+        Same as `forward` method.
+
+        Parameters
+        ----------
+        observations : Tensor
+            Observation(s) to encode. [*B, C, H, W]
+
+        Returns
+        -------
+        Tensor
+            Encoded features. [*B, D]
+        """
         return self.forward(observations)
 
     def forward(self, observations: Tensor) -> Tensor:
-        """Encode observation(s) into features."""
+        """
+        Encode observation(s) into features.
+
+        Parameters
+        ----------
+        observations : Tensor
+            Observation(s) to encode. [*B, C, H, W]
+
+        Returns
+        -------
+        Tensor
+            Encoded features. [*B, D]
+        """
         observations, ps = pack([observations], "* c h w")
         feature_map = self.pre_conv(observations)
         feature_map = self.conv(feature_map)
@@ -107,18 +174,27 @@ class VQEncoder(Encoder):
     """Encoder with Vector Quantization."""
 
     def __init__(self, config: EncoderConfig) -> None:
-        """Set Hyperparameters."""
         super().__init__(config)
         self.vector_quantize = FSQ(levels=[8, 5, 5, 5])
-        self.post_conv = None
-        self.linear = None
-
-    def build_post_conv(self) -> nn.Module:  # noqa: PLR6301
-        """Build the post-convolutional layers."""
-        return FSQ(levels=[8, 5, 5, 5])
+        self.post_conv = nn.Identity()
+        self.linear = nn.Identity()
 
     def training_step(self, observations: Tensor) -> Tensor:
-        """Encode observation(s) into features."""
+        """
+        Encode observation(s) into features.
+
+        Same as `forward` method.
+
+        Parameters
+        ----------
+        observations : Tensor
+            Observation(s) to encode. [*B, C, H, W]
+
+        Returns
+        -------
+        Tensor
+            Encoded features. [*B, D]
+        """
         observations, ps = pack([observations], "* c h w")
         feature_map = self.pre_conv(observations)
         feature_map = self.conv(feature_map)
@@ -128,7 +204,19 @@ class VQEncoder(Encoder):
         return unpack(feature, ps, "* d")[0]
 
     def forward(self, observations: Tensor) -> Tensor:
-        """Encode observation(s) into indices."""
+        """
+        Encode observation(s) into indices.
+
+        Parameters
+        ----------
+        observations : Tensor
+            Observation(s) to encode. [*B, C, H, W]
+
+        Returns
+        -------
+        Tensor
+            Encoded indices. [*B, D]
+        """
         observations, ps = pack([observations], "* c h w")
         feature_map = self.pre_conv(observations)
         feature_map = self.conv(feature_map)

@@ -10,37 +10,53 @@ from torch import Tensor
 from typing_extensions import Self
 
 from cnn.config import DecoderConfig, EncoderConfig
-from cnn.encoder import Encoder, VQEncoder
 from cnn.decoder import Decoder
+from cnn.encoder import VQEncoder
 
 
 class ObservationModule(LightningModule):
     """Base class for autoencoder models."""
 
-    def __init__(self, encoder_config: EncoderConfig, decoder_config: DecoderConfig) -> None:
-        """Set Hyperparameters."""
-        super().__init__()
-        self.encoder = Encoder(encoder_config)
-        self.decoder = Decoder(decoder_config)
-        config = {"encoder_config": encoder_config, "decoder_config": decoder_config}
-        self.save_hyperparameters(config)
-
     def shared_step(self, batch: tuple[Tensor, ...]) -> dict[str, Tensor]:
         """Shared training/validation step."""
-        inputs, targets = batch
-        z = self.encoder.training_step(inputs)
-        reconstructions = self.decoder(z)
-        loss = (reconstructions - targets).abs().mean()
-        return {"loss": loss}
+        raise NotImplementedError
 
-    def training_step(self, batch: tuple[Tensor, ...], **_: str) -> dict[str, Tensor]:
-        """Rollout training step."""
+    def training_step(self, batch: tuple[Tensor, ...], **_kwargs: str) -> dict[str, Tensor]:
+        """
+        Rollout training step.
+
+        Parameters
+        ----------
+        batch : tuple[Tensor, ...]
+            Batch of data.
+        **_kwargs : str
+            Additional keyword arguments.
+
+        Returns
+        -------
+        dict[str, Tensor]
+            Loss dictionary.
+        """
         loss_dict = self.shared_step(batch)
         self.log_dict(loss_dict, prog_bar=True, sync_dist=True)
         return loss_dict
 
-    def validation_step(self, batch: tuple[Tensor, ...], _: int) -> dict[str, Tensor]:
-        """Rollout validation step."""
+    def validation_step(self, batch: tuple[Tensor, ...], **_kwargs: str) -> dict[str, Tensor]:
+        """
+        Rollout validation step.
+
+        Parameters
+        ----------
+        batch : tuple[Tensor, ...]
+            Batch of data.
+        **_kwargs : str
+            Additional keyword arguments.
+
+        Returns
+        -------
+        dict[str, Tensor]
+            Loss dictionary.
+        """
         loss_dict = self.shared_step(batch)
         loss_dict = {"val_" + k: v for k, v in loss_dict.items()}
         self.log_dict(loss_dict, prog_bar=True, sync_dist=True)
@@ -83,7 +99,26 @@ class VQObservationModule(ObservationModule):
     """Autoencoder models with Vector Quantization."""
 
     def __init__(self, encoder_config: EncoderConfig, decoder_config: DecoderConfig) -> None:
-        """Set Hyperparameters."""
         super().__init__(encoder_config, decoder_config)
         self.encoder = VQEncoder(encoder_config)
         self.decoder = Decoder(decoder_config)
+
+    def shared_step(self, batch: tuple[Tensor, ...]) -> dict[str, Tensor]:
+        """
+        Shared training/validation step.
+
+        Parameters
+        ----------
+        batch : tuple[Tensor, ...]
+            Batch of data.
+
+        Returns
+        -------
+        dict[str, Tensor]
+            Loss dictionary.
+        """
+        inputs, targets = batch
+        z = self.encoder.training_step(inputs)
+        reconstructions = self.decoder(z)
+        loss = (reconstructions - targets).abs().mean()
+        return {"loss": loss}
