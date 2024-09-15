@@ -20,8 +20,8 @@ pip install git+https://github.com/nomutin/CNN.git
 poetry add git+https://github.com/nomutin/CNN.git
 ```
 
-### rye
+### uv
 
 ```shell
-rye add cnn --git=https://github.com/nomutin/CNN.git
+uv add cnn --git+https://github.com/nomutin/CNN.git
 ```
