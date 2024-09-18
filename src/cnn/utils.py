@@ -6,7 +6,26 @@ from torch import Tensor, arange, nn
 
 
 class ResidualBlock(nn.Module):
-    """Residual block."""
+    """
+    Residual block.
+
+    Parameters
+    ----------
+    io : int
+        Input/output channels.
+    intermediate : int
+        Intermediate channels.
+    activation_name : str
+        Activation function name.
+
+    Examples
+    --------
+    >>> import torch
+    >>> block = ResidualBlock(16, 32, "ReLU")
+    >>> output = block.forward(torch.randn(1, 16, 8, 8))
+    >>> output.shape
+    torch.Size([1, 16, 8, 8])
+    """
 
     def __init__(
         self,
@@ -44,7 +63,7 @@ class ResidualBlock(nn.Module):
         identity = x.clone()
         x = self.skip(x)
         x += identity
-        return self.activation(x)
+        return self.activation(x)  # type: ignore[no-any-return]
 
 
 class CoordConv2d(nn.Module):
@@ -54,6 +73,15 @@ class CoordConv2d(nn.Module):
     References
     ----------
     * https://github.com/Wizaron/coord-conv-pytorch
+
+    Examples
+    --------
+    >>> import torch
+    >>> coord_conv = CoordConv2d()
+    >>> input_tensor = torch.randn(1, 3, 32, 32)
+    >>> output_tensor = coord_conv.forward(input_tensor)
+    >>> output_tensor.shape
+    torch.Size([1, 5, 32, 32])
     """
 
     def forward(self, x: Tensor) -> Tensor:  # noqa: PLR6301
@@ -99,6 +127,6 @@ def get_activation(activation_name: str) -> type[nn.Module]:
         If the activation function is not found in `torch.nn`.
     """
     if issubclass(m := getattr(nn, activation_name), nn.Module):
-        return m
+        return m  # type: ignore[no-any-return]
     msg = f"Activation function not found: {activation_name}"
     raise AttributeError(msg)

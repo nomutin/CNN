@@ -3,14 +3,31 @@
 from einops import pack, unpack
 from torch import Tensor, nn
 from torchgeometry.contrib import SpatialSoftArgmax2d
-from vector_quantize_pytorch import FSQ
 
 from cnn.config import EncoderConfig
 from cnn.utils import CoordConv2d, ResidualBlock
 
 
 class Encoder(nn.Module):
-    """Observation Encoder."""
+    """
+    Observation Encoder.
+
+    Parameters
+    ----------
+    config : EncoderConfig
+        Encoder configuration.
+
+    Example
+    -------
+    >>> import torch
+    >>> encoder = Encoder(EncoderConfig())
+    >>> features = encoder.forward(torch.randn(1, 3, 64, 64))
+    >>> features.shape
+    torch.Size([1, 128])
+    >>> features = encoder.training_step(torch.randn(1, 3, 64, 64))
+    >>> features.shape
+    torch.Size([1, 128])
+    """
 
     def __init__(self, config: EncoderConfig) -> None:
         super().__init__()
@@ -167,60 +184,4 @@ class Encoder(nn.Module):
         feature_map = self.post_conv(feature_map)
         feature = self.flatten(feature_map)
         feature = self.linear(feature)
-        return unpack(feature, ps, "* d")[0]
-
-
-class VQEncoder(Encoder):
-    """Encoder with Vector Quantization."""
-
-    def __init__(self, config: EncoderConfig) -> None:
-        super().__init__(config)
-        self.vector_quantize = FSQ(levels=[8, 5, 5, 5])
-        self.post_conv = nn.Identity()
-        self.linear = nn.Identity()
-
-    def training_step(self, observations: Tensor) -> Tensor:
-        """
-        Encode observation(s) into features.
-
-        Same as `forward` method.
-
-        Parameters
-        ----------
-        observations : Tensor
-            Observation(s) to encode. [*B, C, H, W]
-
-        Returns
-        -------
-        Tensor
-            Encoded features. [*B, D]
-        """
-        observations, ps = pack([observations], "* c h w")
-        feature_map = self.pre_conv(observations)
-        feature_map = self.conv(feature_map)
-        feature_map = self.res_block(feature_map)
-        feature_map = self.vector_quantize(feature_map)[0]
-        feature = self.flatten(feature_map)
-        return unpack(feature, ps, "* d")[0]
-
-    def forward(self, observations: Tensor) -> Tensor:
-        """
-        Encode observation(s) into indices.
-
-        Parameters
-        ----------
-        observations : Tensor
-            Observation(s) to encode. [*B, C, H, W]
-
-        Returns
-        -------
-        Tensor
-            Encoded indices. [*B, D]
-        """
-        observations, ps = pack([observations], "* c h w")
-        feature_map = self.pre_conv(observations)
-        feature_map = self.conv(feature_map)
-        feature_map = self.res_block(feature_map)
-        indices = self.vector_quantize(feature_map)[1]
-        indices = self.flatten(indices)
-        return unpack(indices, ps, "* d")[0]
+        return unpack(feature, ps, "* d")[0]  # type:ignore[no-any-return]

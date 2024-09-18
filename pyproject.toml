@@ -6,23 +6,18 @@ readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     "einops>=0.8.0",
+    "numpy>=1.24.4",
     "torch>=2.0.0",
     "torchgeometry>=0.1.2",
-    "vector-quantize-pytorch>=1.14.8",
 ]
 
 [project.optional-dependencies]
-train = [
-    "gdown>=5.2.0",
-    "jsonargparse[signatures]>=4.32.1",
-    "lightning>=2.3.3",
-    "torchvision>=0.19.1",
-    "wandb>=0.18.0",
-]
+train = []
 dev = [
     "mypy>=1.11.2",
     "poethepoet>=0.28.0",
     "pydoclint>=0.5.7",
+    "pytest-cov>=5.0.0",
     "ruff>=0.6.5",
 ]
 
@@ -65,3 +60,4 @@ lint-ruff = "ruff check --fix ."
 lint-mypy = "mypy --strict ."
 lint-pydoclint = "pydoclint ."
 lint = ["lint-ruff", "lint-pydoclint", "lint-mypy",]
+test = "pytest . --doctest-modules -ra --cov=src --cov-report=term --cov-report=xml"

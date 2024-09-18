@@ -9,16 +9,16 @@ from cnn.utils import get_activation
 class EncoderConfig:
     """Encoder configuration."""
 
-    linear_sizes: tuple[int, ...]
-    activation_name: str
-    out_activation_name: str
-    channels: tuple[int, ...]
-    kernel_sizes: tuple[int, ...]
-    strides: tuple[int, ...]
-    paddings: tuple[int, ...]
-    num_residual_blocks: int
-    residual_intermediate_size: int
-    residual_output_size: int
+    linear_sizes: tuple[int, ...] = (256, 128)
+    activation_name: str = "ReLU"
+    out_activation_name: str = "Identity"
+    channels: tuple[int, ...] = (16, 32, 64)
+    kernel_sizes: tuple[int, ...] = (3, 3, 3)
+    strides: tuple[int, ...] = (2, 2, 2)
+    paddings: tuple[int, ...] = (1, 1, 1)
+    num_residual_blocks: int = 3
+    residual_intermediate_size: int = 128
+    residual_output_size: int = 64
     coord_conv: bool = False
     spatial_softmax: bool = False
 
@@ -37,18 +37,18 @@ class EncoderConfig:
 class DecoderConfig:
     """Decoder configuration."""
 
-    linear_sizes: tuple[int, ...]
-    activation_name: str
-    out_activation_name: str
-    channels: tuple[int, ...]
-    kernel_sizes: tuple[int, ...]
-    strides: tuple[int, ...]
-    paddings: tuple[int, ...]
-    output_paddings: tuple[int, ...]
-    conv_in_shape: tuple[int, ...]
-    num_residual_blocks: int
-    residual_intermediate_size: int
-    residual_input_size: int
+    linear_sizes: tuple[int, ...] = (128, 512)
+    activation_name: str = "ReLU"
+    out_activation_name: str = "Sigmoid"
+    channels: tuple[int, ...] = (32, 16, 3)
+    kernel_sizes: tuple[int, ...] = (4, 4, 4)
+    strides: tuple[int, ...] = (2, 2, 2)
+    paddings: tuple[int, ...] = (1, 1, 1)
+    output_paddings: tuple[int, ...] = (0, 0, 0)
+    conv_in_shape: tuple[int, ...] = (8, 8, 8)
+    num_residual_blocks: int = 3
+    residual_intermediate_size: int = 128
+    residual_input_size: int = 64
 
     def __post_init__(self) -> None:
         """Make a non-tuple Iterable attributes into tuples."""

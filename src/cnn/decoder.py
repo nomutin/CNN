@@ -9,7 +9,22 @@ from cnn.utils import ResidualBlock
 
 
 class Decoder(nn.Module):
-    """Observation Decoder."""
+    """
+    Observation Decoder.
+
+    Parameters
+    ----------
+    config : DecoderConfig
+        Decoder configuration.
+
+    Example
+    -------
+    >>> import torch
+    >>> decoder = Decoder(DecoderConfig())
+    >>> observation = decoder.forward(torch.randn(1, 128))
+    >>> observation.shape
+    torch.Size([1, 3, 64, 64])
+    """
 
     def __init__(self, config: DecoderConfig) -> None:
         super().__init__()
@@ -123,4 +138,4 @@ class Decoder(nn.Module):
         feature_map = self.rearrange(feature)
         feature_map = self.res_block(feature_map)
         reconstructions = self.conv(feature_map)
-        return unpack(reconstructions, ps, "* c h w")[0]
+        return unpack(reconstructions, ps, "* c h w")[0]  # type: ignore[no-any-return]
