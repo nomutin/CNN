@@ -1,7 +1,10 @@
 """Utility functions."""
 
+from collections.abc import Callable
+from typing import Any
+
 import torch
-from einops import repeat
+from einops import pack, repeat, unpack
 from torch import Tensor, arange, nn
 
 
@@ -130,3 +133,44 @@ def get_activation(activation_name: str) -> type[nn.Module]:
         return m  # type: ignore[no-any-return]
     msg = f"Activation function not found: {activation_name}"
     raise AttributeError(msg)
+
+
+ForwardLike = Callable[[Any, Tensor], Tensor]
+
+
+def packdim(in_pattern: str, out_pattern: str) -> Callable[[ForwardLike], ForwardLike]:
+    """
+    Perform packing/unpacking for functions with one argument and one return value as Tensor.
+
+    Parameters
+    ----------
+    in_pattern : str
+        einops packing pattern of input.
+    out_pattern : str
+        einops packing pattern of output.
+
+    Returns
+    -------
+    Callable[[ForwardLike], ForwardLike]
+        Decorator.
+
+    Examples
+    --------
+    >>> from torch import nn, randn, Tensor
+    >>> class Model(nn.Flatten):
+    ...     @packdim(in_pattern="* c h w", out_pattern="* d")
+    ...     def forward(self, x: Tensor) -> Tensor:
+    ...         return super().forward(x)
+    >>> Model().forward(randn(4, 10, 3, 8, 8)).shape
+    torch.Size([4, 10, 192])
+    """
+
+    def decorator(forward_func: ForwardLike) -> ForwardLike:
+        def decorated_forward(self_: nn.Module, input_tensor: Tensor) -> Tensor:
+            input_tensor, ps = pack([input_tensor], in_pattern)
+            output_tensor = forward_func(self_, input_tensor)
+            return unpack(output_tensor, ps, out_pattern)[0]
+
+        return decorated_forward
+
+    return decorator

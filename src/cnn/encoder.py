@@ -1,11 +1,10 @@
 """Networks."""
 
-from einops import pack, unpack
 from torch import Tensor, nn
 from torchgeometry.contrib import SpatialSoftArgmax2d
 
 from cnn.config import EncoderConfig
-from cnn.utils import CoordConv2d, ResidualBlock
+from cnn.utils import CoordConv2d, ResidualBlock, packdim
 
 
 class Encoder(nn.Module):
@@ -163,6 +162,7 @@ class Encoder(nn.Module):
         """
         return self.forward(observations)
 
+    @packdim(in_pattern="* c h w", out_pattern="* d")
     def forward(self, observations: Tensor) -> Tensor:
         """
         Encode observation(s) into features.
@@ -177,11 +177,9 @@ class Encoder(nn.Module):
         Tensor
             Encoded features. [*B, D]
         """
-        observations, ps = pack([observations], "* c h w")
         feature_map = self.pre_conv(observations)
         feature_map = self.conv(feature_map)
         feature_map = self.res_block(feature_map)
         feature_map = self.post_conv(feature_map)
         feature = self.flatten(feature_map)
-        feature = self.linear(feature)
-        return unpack(feature, ps, "* d")[0]  # type:ignore[no-any-return]
+        return self.linear(feature)  # type: ignore[no-any-return]

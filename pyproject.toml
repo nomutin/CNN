@@ -12,7 +12,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-train = []
 dev = [
     "mypy>=1.11.2",
     "poethepoet>=0.28.0",
