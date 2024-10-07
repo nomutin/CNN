@@ -1,11 +1,10 @@
 """Networks."""
 
-from einops import pack, unpack
 from einops.layers.torch import Rearrange
 from torch import Tensor, nn
 
 from cnn.config import DecoderConfig
-from cnn.utils import ResidualBlock
+from cnn.utils import ResidualBlock, packdim
 
 
 class Decoder(nn.Module):
@@ -119,6 +118,7 @@ class Decoder(nn.Module):
         conv_list[-1] = self.config.out_activation()
         return nn.Sequential(*conv_list)
 
+    @packdim(in_pattern="* d", out_pattern="* c h w")
     def forward(self, features: Tensor) -> Tensor:
         """
         Reconstruct observation(s) from features.
@@ -133,9 +133,7 @@ class Decoder(nn.Module):
         Tensor
             Reconstructed observation(s). Shape: [config.channels[0], H, W].
         """
-        features, ps = pack([features], "* d")
         feature = self.linear(features)
         feature_map = self.rearrange(feature)
         feature_map = self.res_block(feature_map)
-        reconstructions = self.conv(feature_map)
-        return unpack(reconstructions, ps, "* c h w")[0]  # type: ignore[no-any-return]
+        return self.conv(feature_map)  # type: ignore[no-any-return]
